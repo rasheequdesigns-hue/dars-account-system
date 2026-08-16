@@ -14,6 +14,8 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- QRCode Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <link rel="stylesheet" href="style.css">
 
@@ -84,9 +86,15 @@
                 </div>
                 <span id="connection-status" class="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">Waiting for peer...</span>
             </div>
-            <button onclick="leaveRoom()" class="bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 px-3 py-1.5 rounded-xl text-xs font-bold transition border border-rose-500/30 backdrop-blur-md">
-                Leave
-            </button>
+            <div class="flex items-center space-x-2">
+                <button id="qr-btn" onclick="toggleQRModal(true)" class="bg-brand-600/80 hover:bg-brand-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition border border-brand-500/30 backdrop-blur-md flex items-center space-x-1.5">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span>Show QR</span>
+                </button>
+                <button onclick="leaveRoom()" class="bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 px-3 py-1.5 rounded-xl text-xs font-bold transition border border-rose-500/30 backdrop-blur-md">
+                    Leave
+                </button>
+            </div>
         </header>
 
         <!-- Video Area -->
@@ -121,6 +129,40 @@
                 </button>
             </div>
         </footer>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onclick="toggleQRModal(false)">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center relative" onclick="event.stopPropagation()">
+            <button onclick="toggleQRModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="mb-5">
+                <div class="inline-flex items-center px-3 py-1 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20 text-xs font-bold uppercase tracking-wider mb-3">
+                    <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> Phone Connect
+                </div>
+                <h3 class="text-xl font-bold text-white">Scan to Join Room</h3>
+                <p class="text-slate-400 text-xs mt-1">Scan this QR code with your phone camera to connect instantly</p>
+            </div>
+
+            <!-- QR Code Canvas -->
+            <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-5">
+                <div id="qrcode-canvas" class="flex items-center justify-center min-w-[180px] min-h-[180px]"></div>
+            </div>
+
+            <!-- Room Code Display -->
+            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800">
+                <div class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mb-1">Room Code</div>
+                <div id="qr-room-code" class="text-3xl font-black font-mono tracking-widest text-brand-500">----</div>
+            </div>
+
+            <!-- Copy Link Button -->
+            <button onclick="copyJoinLink()" class="mt-4 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition border border-slate-700 flex items-center justify-center space-x-2">
+                <i class="fa-regular fa-copy text-brand-500"></i>
+                <span>Copy Join Link (for WhatsApp)</span>
+            </button>
+        </div>
     </div>
 
     <script src="app.js"></script>

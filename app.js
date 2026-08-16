@@ -24,6 +24,18 @@ function generateRoomCode() {
 }
 
 // ---------------------------------------------------------
+// Auto-join if opened via QR code link (?room=XXXX)
+// ---------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const roomParam = params.get('room');
+    if (roomParam && roomParam.length === 4) {
+        document.getElementById('join-room-input').value = roomParam.toUpperCase();
+        joinRoom();
+    }
+});
+
+// ---------------------------------------------------------
 // PeerJS Connection Logic
 // ---------------------------------------------------------
 
@@ -31,7 +43,46 @@ function createRoom() {
     isHost = true;
     roomId = generateRoomCode();
     initPeer(`educast-${roomId}`);
+    // Auto-show QR after short delay so the room screen is visible first
+    setTimeout(() => {
+        generateQRCode();
+        toggleQRModal(true);
+    }, 400);
 }
+
+function generateQRCode() {
+    const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    const canvas = document.getElementById('qrcode-canvas');
+    canvas.innerHTML = ''; // Clear old QR if any
+    new QRCode(canvas, {
+        text: joinUrl,
+        width: 180,
+        height: 180,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+    });
+    document.getElementById('qr-room-code').innerText = roomId;
+}
+
+window.toggleQRModal = function (show) {
+    const modal = document.getElementById('qr-modal');
+    if (show) modal.classList.remove('hidden');
+    else modal.classList.add('hidden');
+};
+
+window.copyJoinLink = function () {
+    const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+    navigator.clipboard.writeText(joinUrl).then(() => {
+        const btn = document.querySelector('#qr-modal button[onclick="copyJoinLink()"] span');
+        if (btn) {
+            btn.innerText = 'Link Copied!';
+            setTimeout(() => btn.innerText = 'Copy Join Link (for WhatsApp)', 2000);
+        }
+    }).catch(() => {
+        prompt('Copy this link:', `${window.location.origin}${window.location.pathname}?room=${roomId}`);
+    });
+};
 
 function joinRoom() {
     const input = document.getElementById('join-room-input').value.trim().toUpperCase();
