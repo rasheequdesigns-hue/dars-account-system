@@ -1,12 +1,42 @@
-/* EduCast Sync - Custom Styles */
+/* EduCast Sync — Custom Styles */
 
-/* Hide scrollbar for clean UI */
+/* Make YouTube API-generated iframe fill its container */
+#laptop-yt-player iframe,
+#laptop-yt-player {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    inset: 0;
+}
+
+/* Ensure the YT wrapper fills the screen */
+#laptop-yt-wrapper {
+    position: absolute;
+    inset: 0;
+}
+
+/* Hide scrollbar */
 ::-webkit-scrollbar {
     width: 0px;
     background: transparent;
 }
 
-/* Ensure video elements don't show default focus outlines */
+/* Video element fills container */
+#laptop-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+/* Facebook/Instagram iframe */
+#laptop-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #000;
+}
+
 video:focus {
     outline: none;
 }
