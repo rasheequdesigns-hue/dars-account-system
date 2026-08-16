@@ -5,30 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EduCast - Synced Video Player</title>
-
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
-    <!-- QRCode Generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        brand: {
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                        }
+                        brand: { 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7' }
                     }
                 }
             }
@@ -36,131 +26,160 @@
     </script>
 </head>
 
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white">
+<body class="bg-slate-950 text-white min-h-screen flex flex-col font-sans antialiased overflow-hidden">
 
-    <!-- HOME SCREEN -->
-    <div id="home-screen" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div class="mb-10">
-            <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-brand-500/10 text-brand-500 border border-brand-500/30 mb-6 shadow-xl shadow-brand-500/10">
-                <i class="fa-solid fa-play text-4xl ml-1"></i>
-            </div>
-            <h1 class="text-4xl font-extrabold tracking-tight text-white mb-3">
-                EduCast <span class="text-brand-500">Sync</span>
-            </h1>
-            <p class="text-slate-400 text-sm max-w-sm mx-auto">
-                Watch videos in perfect sync across your phone, laptop, or TV.
-            </p>
-        </div>
+    <!-- ========================================================= -->
+    <!-- LAPTOP / TV SCREEN                                         -->
+    <!-- Shows QR code while waiting, then plays synced video       -->
+    <!-- ========================================================= -->
+    <div id="screen-laptop" class="hidden flex-1 flex flex-col h-screen w-full relative bg-black">
 
-        <div class="w-full max-w-sm space-y-6">
-            <!-- Create Room -->
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl">
-                <h2 class="text-lg font-bold mb-4 text-white">Start a New Session</h2>
-                <button onclick="createRoom()" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-brand-500/20">
-                    Create Room
-                </button>
-            </div>
-
-            <!-- Join Room -->
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl">
-                <h2 class="text-lg font-bold mb-4 text-white">Join an Existing Room</h2>
-                <div class="flex space-x-2">
-                    <input id="join-room-input" type="text" placeholder="Room Code (e.g. A1B2)" maxlength="6" uppercase class="w-full bg-slate-950 border border-slate-800 text-center text-lg font-mono tracking-widest text-brand-500 py-3 rounded-2xl focus:outline-none focus:border-brand-500 uppercase">
-                    <button onclick="joinRoom()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 rounded-2xl transition shadow-lg shadow-emerald-600/20">
-                        Join
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ROOM SCREEN -->
-    <div id="room-screen" class="hidden flex-1 flex flex-col h-screen w-full bg-black overflow-hidden relative">
-        <!-- Header -->
-        <header class="absolute top-0 inset-x-0 z-40 bg-gradient-to-b from-black/80 to-transparent px-4 py-4 flex items-center justify-between transition-opacity duration-300 hover:opacity-100" id="room-header">
-            <div class="flex items-center space-x-3">
-                <div class="bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/50 flex items-center space-x-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" id="connection-dot"></span>
-                    <span class="text-xs font-mono text-slate-300">ROOM:</span>
-                    <span id="display-room-code" class="text-sm font-bold text-brand-500 tracking-wider">----</span>
-                </div>
-                <span id="connection-status" class="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">Waiting for peer...</span>
-            </div>
+        <!-- Header Bar -->
+        <header class="absolute top-0 inset-x-0 z-40 flex items-center justify-between px-5 py-3 bg-gradient-to-b from-black/90 to-transparent">
             <div class="flex items-center space-x-2">
-                <button id="qr-btn" onclick="toggleQRModal(true)" class="bg-brand-600/80 hover:bg-brand-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition border border-brand-500/30 backdrop-blur-md flex items-center space-x-1.5">
-                    <i class="fa-solid fa-qrcode"></i>
-                    <span>Show QR</span>
-                </button>
-                <button onclick="leaveRoom()" class="bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 px-3 py-1.5 rounded-xl text-xs font-bold transition border border-rose-500/30 backdrop-blur-md">
-                    Leave
+                <div class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                    <i class="fa-solid fa-play text-sm ml-0.5"></i>
+                </div>
+                <span class="text-sm font-bold text-white">EduCast <span class="text-brand-400">Sync</span></span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div id="laptop-conn-status" class="flex items-center space-x-2 text-xs text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span>Waiting for phone...</span>
+                </div>
+                <button onclick="window.location.reload()" class="text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-full border border-slate-700 transition">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Reset
                 </button>
             </div>
         </header>
 
-        <!-- Video Area -->
-        <main class="flex-1 relative flex items-center justify-center w-full h-full bg-black group">
-            
-            <!-- Default Placeholder -->
-            <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 p-8 text-center z-10">
-                <i class="fa-solid fa-film text-5xl text-slate-700 mb-4"></i>
-                <h2 class="text-xl font-bold text-slate-400">Waiting for a video link...</h2>
+        <!-- Video Player Area -->
+        <main class="flex-1 relative flex items-center justify-center w-full h-full bg-black">
+
+            <!-- QR Code Waiting Overlay (shown until phone connects) -->
+            <div id="qr-overlay" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950 p-8">
+                <div class="text-center mb-8">
+                    <p class="text-slate-400 text-sm mb-1">Open this on your phone to control</p>
+                    <h2 class="text-3xl font-black text-white">Scan to Connect</h2>
+                </div>
+
+                <!-- Big QR Code -->
+                <div class="bg-white p-5 rounded-3xl shadow-2xl shadow-brand-500/20 border-4 border-brand-500/30 mb-6">
+                    <div id="laptop-qr-canvas" class="flex items-center justify-center"></div>
+                </div>
+
+                <!-- Room Code Display -->
+                <div class="flex items-center space-x-4 bg-slate-900 px-6 py-3 rounded-2xl border border-slate-800">
+                    <div class="text-right">
+                        <div class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Room Code</div>
+                        <div id="laptop-room-code" class="text-2xl font-black font-mono tracking-widest text-brand-400">----</div>
+                    </div>
+                    <div class="w-px h-10 bg-slate-700"></div>
+                    <p class="text-xs text-slate-400 max-w-[160px]">Or type this code on the phone manually</p>
+                </div>
             </div>
 
-            <!-- HTML5 Video (Direct Links) -->
-            <video id="html-video" class="hidden w-full h-full object-contain" playsinline controls></video>
+            <!-- HTML5 Video -->
+            <video id="laptop-video" class="hidden w-full h-full object-contain" playsinline></video>
 
-            <!-- YouTube Video -->
-            <div id="youtube-wrapper" class="hidden w-full h-full pointer-events-none sm:pointer-events-auto">
-                <div id="youtube-player" class="w-full h-full"></div>
+            <!-- YouTube Embed -->
+            <div id="laptop-yt-wrapper" class="hidden w-full h-full">
+                <div id="laptop-yt-player" class="w-full h-full"></div>
             </div>
 
-            <!-- Sync Overlay Badge -->
-            <div id="sync-badge" class="absolute pointer-events-none opacity-0 transition-all duration-300 transform scale-125 z-30 bg-black/60 border border-brand-500 text-brand-500 w-24 h-24 rounded-full flex items-center justify-center text-4xl shadow-2xl backdrop-blur-md">
-                <i id="sync-icon" class="fa-solid fa-play"></i>
+            <!-- Play/Pause Flash Badge -->
+            <div id="laptop-sync-badge" class="absolute opacity-0 transition-all duration-300 scale-125 z-30 bg-black/70 border-2 border-brand-500 text-brand-400 w-28 h-28 rounded-full flex items-center justify-center text-5xl shadow-2xl backdrop-blur-md pointer-events-none">
+                <i id="laptop-sync-icon" class="fa-solid fa-play ml-1"></i>
             </div>
         </main>
-
-        <!-- Bottom Controls -->
-        <footer class="absolute bottom-0 inset-x-0 z-40 bg-gradient-to-t from-black via-black/90 to-transparent p-4 pb-6 transition-opacity duration-300">
-            <div class="max-w-2xl mx-auto bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl border border-slate-700/50 shadow-2xl flex items-center space-x-2">
-                <input id="video-link-input" type="url" placeholder="Paste YouTube or MP4 link here..." class="flex-1 bg-transparent text-sm text-white px-3 py-2 focus:outline-none placeholder-slate-500">
-                <button onclick="loadVideoFromInput()" class="bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-sm px-4 py-2 rounded-xl font-bold transition shadow-md">
-                    Play & Sync
-                </button>
-            </div>
-        </footer>
     </div>
 
-    <!-- QR Code Modal -->
-    <div id="qr-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onclick="toggleQRModal(false)">
-        <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center relative" onclick="event.stopPropagation()">
-            <button onclick="toggleQRModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg transition">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
 
-            <div class="mb-5">
-                <div class="inline-flex items-center px-3 py-1 rounded-full bg-brand-500/10 text-brand-500 border border-brand-500/20 text-xs font-bold uppercase tracking-wider mb-3">
-                    <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> Phone Connect
+    <!-- ========================================================= -->
+    <!-- PHONE CONTROLLER SCREEN                                    -->
+    <!-- Paste link, play/pause — controls the laptop              -->
+    <!-- ========================================================= -->
+    <div id="screen-phone" class="hidden flex-1 flex flex-col min-h-screen bg-slate-950">
+
+        <!-- Phone Header -->
+        <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                    <i class="fa-solid fa-mobile-screen-button text-sm"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white">Scan to Join Room</h3>
-                <p class="text-slate-400 text-xs mt-1">Scan this QR code with your phone camera to connect instantly</p>
+                <div>
+                    <div class="text-sm font-bold text-white">Phone Remote</div>
+                    <div id="phone-conn-status" class="text-[10px] text-amber-400 font-medium">Connecting...</div>
+                </div>
+            </div>
+            <button onclick="window.location.href = window.location.pathname" class="text-xs text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded-full border border-rose-500/20 transition">
+                Disconnect
+            </button>
+        </header>
+
+        <!-- Phone Controls -->
+        <main class="flex-1 flex flex-col p-4 space-y-4 max-w-md mx-auto w-full">
+
+            <!-- Paste Link Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-link text-brand-400"></i>
+                    <h2 class="text-sm font-bold text-white">Paste Video Link</h2>
+                    <span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-semibold"><i class="fa-brands fa-youtube"></i></span>
+                    <span class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-semibold">MP4</span>
+                </div>
+                <p class="text-[11px] text-slate-400">Copy any video link from WhatsApp or YouTube and paste it here — it will play on the big screen instantly.</p>
+                <div class="flex space-x-2">
+                    <input id="phone-link-input" type="url" placeholder="Paste link here..." class="flex-1 bg-slate-950 border border-slate-700 text-sm text-white px-3 py-2.5 rounded-xl focus:outline-none focus:border-brand-500 placeholder-slate-600 transition">
+                    <button onclick="sendVideoLink()" class="bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-sm px-4 py-2.5 rounded-xl font-bold transition shadow-lg shadow-brand-600/25">
+                        <i class="fa-solid fa-play ml-0.5"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- QR Code Canvas -->
-            <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-5">
-                <div id="qrcode-canvas" class="flex items-center justify-center min-w-[180px] min-h-[180px]"></div>
+            <!-- Play / Pause Big Button -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col items-center space-y-4">
+                <h2 class="text-sm font-bold text-white self-start">Playback Control</h2>
+
+                <button id="phone-playpause-btn" onclick="togglePlayPause()" class="w-28 h-28 rounded-full bg-brand-600 hover:bg-brand-500 active:scale-95 text-white flex items-center justify-center shadow-2xl shadow-brand-600/30 transition-all">
+                    <i id="phone-playpause-icon" class="fa-solid fa-play text-4xl ml-1.5"></i>
+                </button>
+
+                <p class="text-[11px] text-slate-500 text-center">Tap to play or pause on the big screen</p>
             </div>
 
-            <!-- Room Code Display -->
-            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800">
-                <div class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mb-1">Room Code</div>
-                <div id="qr-room-code" class="text-3xl font-black font-mono tracking-widest text-brand-500">----</div>
+            <!-- Skip Buttons -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="sendCommand('skip', -10)" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-800 rounded-2xl p-4 flex flex-col items-center space-y-1 transition">
+                    <i class="fa-solid fa-rotate-left text-xl text-slate-300"></i>
+                    <span class="text-xs font-bold text-slate-400">-10 sec</span>
+                </button>
+                <button onclick="sendCommand('skip', 10)" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-800 rounded-2xl p-4 flex flex-col items-center space-y-1 transition">
+                    <i class="fa-solid fa-rotate-right text-xl text-slate-300"></i>
+                    <span class="text-xs font-bold text-slate-400">+10 sec</span>
+                </button>
             </div>
 
-            <!-- Copy Link Button -->
-            <button onclick="copyJoinLink()" class="mt-4 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition border border-slate-700 flex items-center justify-center space-x-2">
-                <i class="fa-regular fa-copy text-brand-500"></i>
-                <span>Copy Join Link (for WhatsApp)</span>
+            <!-- Connection Info -->
+            <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-3 flex items-center space-x-3">
+                <span id="phone-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"></span>
+                <span id="phone-conn-detail" class="text-[11px] text-slate-400">Establishing P2P connection to laptop...</span>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- HOME SCREEN (fallback — only shown briefly if needed)     -->
+    <!-- ========================================================= -->
+    <div id="screen-home" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <i class="fa-solid fa-play text-5xl text-brand-500 mb-4"></i>
+        <h1 class="text-3xl font-black text-white mb-2">EduCast <span class="text-brand-400">Sync</span></h1>
+        <p class="text-slate-400 text-sm mb-8 max-w-xs">Open this on your laptop or TV to get a QR code, then scan with your phone.</p>
+        <div class="space-y-3 w-full max-w-xs">
+            <button onclick="startLaptopMode()" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-brand-600/25 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-laptop"></i>
+                <span>Open on Laptop / TV</span>
             </button>
         </div>
     </div>
