@@ -1,42 +1,62 @@
 /* EduCast Sync — Custom Styles */
 
-/* Make YouTube API-generated iframe fill its container */
-#laptop-yt-player iframe,
-#laptop-yt-player {
-    width: 100% !important;
-    height: 100% !important;
-    position: absolute;
-    inset: 0;
-}
-
-/* Ensure the YT wrapper fills the screen */
+/* ── YouTube Player ─────────────────────────────────────── */
 #laptop-yt-wrapper {
     position: absolute;
     inset: 0;
+    background: #000;
 }
 
-/* Hide scrollbar */
-::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
+#laptop-yt-player,
+#laptop-yt-player iframe {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
 }
 
-/* Video element fills container */
+/* ── HTML5 Video ────────────────────────────────────────── */
 #laptop-video {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: contain;
     background: #000;
 }
 
-/* Facebook/Instagram iframe */
-#laptop-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
+/* ── Facebook / Instagram iframe wrapper ────────────────── */
+/* The wrapper fills the whole screen and centers the iframe */
+#laptop-iframe-wrapper {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: #000;
 }
 
-video:focus {
-    outline: none;
+/* Vertical video (Reels / Shorts) — 9:16 pillarboxed */
+#laptop-iframe-wrapper.vertical #laptop-iframe {
+    height: 100vh;
+    width: calc(100vh * 9 / 16);
+    max-width: 100vw;
 }
+
+/* Horizontal video — 16:9 letterboxed */
+#laptop-iframe-wrapper.horizontal #laptop-iframe {
+    width: 100vw;
+    height: calc(100vw * 9 / 16);
+    max-height: 100vh;
+}
+
+#laptop-iframe {
+    border: none;
+    display: block;
+    background: #000;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 0; background: transparent; }
+
+video:focus, iframe:focus { outline: none; }

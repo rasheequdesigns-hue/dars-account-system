@@ -84,8 +84,11 @@
             </div>
 
             <!-- Facebook / Instagram Embed -->
-            <iframe id="laptop-iframe" class="hidden w-full h-full border-0"
-                allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+            <!-- Wrapper centers the iframe; JS adds .vertical or .horizontal class -->
+            <div id="laptop-iframe-wrapper" class="hidden absolute inset-0 flex items-center justify-center bg-black">
+                <iframe id="laptop-iframe" class="border-0"
+                    allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+            </div>
 
             <!-- Play/Pause Flash Badge -->
             <div id="laptop-sync-badge" class="absolute opacity-0 transition-all duration-300 scale-125 z-30 bg-black/70 border-2 border-brand-500 text-brand-400 w-28 h-28 rounded-full flex items-center justify-center text-5xl shadow-2xl backdrop-blur-md pointer-events-none">
