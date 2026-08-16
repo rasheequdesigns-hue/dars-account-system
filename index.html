@@ -4,37 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EduCast - Classroom Remote Video Presenter</title>
+    <title>EduCast - Synced Video Player</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- QRCode Generator Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- PeerJS (WebRTC P2P Data Channel & File Transfer) -->
+    <!-- PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
 
-    <!-- Custom Stylesheet -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="style.css">
 
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
                         brand: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0284c7',
+                            500: '#0ea5e9',
                             600: '#0284c7',
-                            700: '#0369a1',
-                            900: '#0c4a6e',
                         }
                     }
                 }
@@ -43,659 +34,95 @@
     </script>
 </head>
 
-<body
-    class="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between antialiased selection:bg-sky-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white">
 
-    <div id="app" class="w-full min-h-screen flex flex-col">
-
-        <!-- MODE SELECTION SCREEN (Shown if no room parameters set) -->
-        <div id="mode-selector"
-            class="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-4xl mx-auto my-auto">
-            <div class="mb-8">
-                <div
-                    class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-sky-500/10 text-sky-400 border border-sky-500/30 mb-4 shadow-xl shadow-sky-500/10">
-                    <i class="fa-solid fa-tv text-4xl"></i>
-                </div>
-                <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-3">
-                    EduCast <span class="text-sky-400">Classroom</span>
-                </h1>
-                <p class="text-slate-400 text-base md:text-lg max-w-xl mx-auto">
-                    Display language lesson videos on your laptop screen and remotely control playback, speed,
-                    subtitles, and
-                    laser pointer from your phone!
-                </p>
+    <!-- HOME SCREEN -->
+    <div id="home-screen" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div class="mb-10">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-brand-500/10 text-brand-500 border border-brand-500/30 mb-6 shadow-xl shadow-brand-500/10">
+                <i class="fa-solid fa-play text-4xl ml-1"></i>
             </div>
+            <h1 class="text-4xl font-extrabold tracking-tight text-white mb-3">
+                EduCast <span class="text-brand-500">Sync</span>
+            </h1>
+            <p class="text-slate-400 text-sm max-w-sm mx-auto">
+                Watch videos in perfect sync across your phone, laptop, or TV.
+            </p>
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
-                <!-- Laptop Mode Button -->
-                <button onclick="startLaptopMode()"
-                    class="glass-panel hover:bg-slate-800/80 p-8 rounded-2xl border border-sky-500/30 text-left transition duration-300 group hover:border-sky-400 shadow-2xl flex flex-col justify-between">
-                    <div>
-                        <div
-                            class="w-12 h-12 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                            <i class="fa-solid fa-laptop text-2xl"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-2">Laptop Screen Mode</h3>
-                        <p class="text-slate-400 text-sm">Open this on your class laptop or projector display. Generates
-                            a QR code
-                            for your phone to scan.</p>
-                    </div>
-                    <div class="mt-6 flex items-center text-sky-400 font-semibold text-sm">
-                        Launch Laptop Display <i
-                            class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
-                    </div>
-                </button>
-
-                <!-- Phone Remote Button -->
-                <button onclick="showPhoneConnectModal()"
-                    class="glass-panel hover:bg-slate-800/80 p-8 rounded-2xl border border-emerald-500/30 text-left transition duration-300 group hover:border-emerald-400 shadow-2xl flex flex-col justify-between">
-                    <div>
-                        <div
-                            class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                            <i class="fa-solid fa-mobile-screen-button text-2xl"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-2">Phone Remote Mode</h3>
-                        <p class="text-slate-400 text-sm">Use your phone to select videos, transfer local files P2P,
-                            control
-                            playback, adjust speed, and highlight words.</p>
-                    </div>
-                    <div class="mt-6 flex items-center text-emerald-400 font-semibold text-sm">
-                        Enter Room Code <i
-                            class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition"></i>
-                    </div>
+        <div class="w-full max-w-sm space-y-6">
+            <!-- Create Room -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl">
+                <h2 class="text-lg font-bold mb-4 text-white">Start a New Session</h2>
+                <button onclick="createRoom()" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3.5 rounded-2xl transition shadow-lg shadow-brand-500/20">
+                    Create Room
                 </button>
             </div>
 
-            <!-- Capabilities Footer -->
-            <div
-                class="mt-12 flex flex-wrap justify-center items-center gap-6 text-xs text-slate-500 border-t border-slate-800/60 pt-6">
-                <span class="flex items-center"><i class="fa-solid fa-bolt text-amber-400 mr-2"></i> P2P Local Video
-                    Transfer</span>
-                <span class="flex items-center"><i class="fa-brands fa-youtube text-red-500 mr-2"></i> YouTube & Shorts
-                    Caster</span>
-                <span class="flex items-center"><i class="fa-brands fa-instagram text-pink-500 mr-2"></i> IG Reels & FB
-                    Support</span>
-                <span class="flex items-center"><i class="fa-solid fa-hand-pointer text-red-400 mr-2"></i> Touchscreen
-                    Laser
-                    Pointer</span>
-                <span class="flex items-center"><i class="fa-solid fa-gauge-high text-sky-400 mr-2"></i> Language
-                    Practice
-                    Speed</span>
-            </div>
-        </div>
-
-        <!-- LAPTOP DISPLAY RECEIVER MODE -->
-        <div id="laptop-view" class="hidden flex-1 flex flex-col h-screen w-full bg-slate-950 overflow-hidden relative">
-            <!-- Top Navigation Bar -->
-            <header class="glass-panel z-20 px-6 py-3 flex items-center justify-between border-b border-slate-800">
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 rounded-full bg-sky-500 animate-ping"></span>
-                        <span class="text-lg font-bold tracking-wide text-white flex items-center">
-                            EduCast <span class="text-sky-400 ml-1">Display</span>
-                        </span>
-                    </div>
-                    <div
-                        class="hidden md:flex items-center bg-slate-800/80 px-3 py-1 rounded-lg border border-slate-700 text-xs font-mono text-slate-300">
-                        <span>ROOM:</span>
-                        <span id="laptop-room-code" class="ml-2 font-bold text-sky-400 tracking-wider">------</span>
-                    </div>
-                </div>
-
-                <!-- Connection Badge & QR toggle -->
-                <div class="flex items-center space-x-3">
-                    <div id="connection-status-badge"
-                        class="flex items-center space-x-2 bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-full border border-amber-500/20 text-xs font-medium transition">
-                        <i class="fa-solid fa-circle-notch fa-spin"></i>
-                        <span>Waiting for Phone Scan...</span>
-                    </div>
-                    <button onclick="toggleQRModal(true)"
-                        class="bg-sky-600 hover:bg-sky-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-medium flex items-center transition shadow-lg shadow-sky-600/20">
-                        <i class="fa-solid fa-qrcode mr-1.5"></i> Show QR Code
+            <!-- Join Room -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl">
+                <h2 class="text-lg font-bold mb-4 text-white">Join an Existing Room</h2>
+                <div class="flex space-x-2">
+                    <input id="join-room-input" type="text" placeholder="Room Code (e.g. A1B2)" maxlength="6" uppercase class="w-full bg-slate-950 border border-slate-800 text-center text-lg font-mono tracking-widest text-brand-500 py-3 rounded-2xl focus:outline-none focus:border-brand-500 uppercase">
+                    <button onclick="joinRoom()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 rounded-2xl transition shadow-lg shadow-emerald-600/20">
+                        Join
                     </button>
-                    <button onclick="toggleFullscreen()"
-                        class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs transition border border-slate-700"
-                        title="Toggle Fullscreen (F)">
-                        <i class="fa-solid fa-expand text-sm"></i>
-                    </button>
-                </div>
-            </header>
-
-            <!-- Main Video Screen Area -->
-            <main class="flex-1 relative flex items-center justify-center bg-black overflow-hidden group">
-                <!-- Video Element for Direct Files & Mobile Local P2P Videos -->
-                <video id="classroom-video" class="w-full h-full object-contain max-h-[88vh]" playsinline>
-                    <source id="video-source" src="" type="video/mp4">
-                    Your browser does not support video playback.
-                </video>
-
-                <!-- YouTube API Container -->
-                <div id="youtube-player-wrapper" class="hidden w-full h-full max-h-[88vh]">
-                    <div id="youtube-player" class="w-full h-full"></div>
-                </div>
-
-                <!-- Dynamic Embedded Player for Instagram and Facebook -->
-                <iframe id="classroom-iframe" class="hidden w-full h-full border-0 max-h-[88vh]"
-                    allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-
-                <!-- Laser Pointer Overlay Dot -->
-                <div id="laser-dot"
-                    class="hidden absolute w-7 h-7 -ml-3.5 -mt-3.5 rounded-full bg-red-500 border-2 border-white shadow-[0_0_20px_#ef4444] z-30 flex items-center justify-center opacity-95">
-                    <div class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></div>
-                </div>
-
-                <!-- Live Subtitle / Lesson Note Overlay Banner -->
-                <div id="subtitle-overlay"
-                    class="hidden absolute bottom-14 left-1/2 transform -translate-x-1/2 z-20 max-w-3xl w-11/12 text-center pointer-events-none">
-                    <div
-                        class="glass-panel bg-slate-900/95 border border-sky-500/50 text-white text-xl md:text-2xl font-bold px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl text-sky-200 tracking-wide">
-                        <span id="subtitle-text">Language Lesson Note...</span>
-                    </div>
-                </div>
-
-                <!-- Play/Pause Remote Flash Badge Indicator -->
-                <div id="remote-action-badge"
-                    class="absolute pointer-events-none opacity-0 transition-all duration-300 transform scale-125 z-30 bg-slate-900/85 border border-sky-400 text-sky-400 w-24 h-24 rounded-full flex items-center justify-center text-4xl shadow-2xl backdrop-blur-md">
-                    <i id="remote-action-icon" class="fa-solid fa-play"></i>
-                </div>
-
-                <!-- P2P Receiving Video File Progress Overlay -->
-                <div id="p2p-receive-progress"
-                    class="hidden absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-                    <div
-                        class="w-16 h-16 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center mb-4 text-3xl animate-bounce">
-                        <i class="fa-solid fa-cloud-arrow-down"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-white mb-2">Receiving Mobile Video File...</h3>
-                    <p id="p2p-file-name" class="text-slate-400 text-xs mb-4 font-mono">lesson_video.mp4</p>
-
-                    <div class="w-full max-w-md bg-slate-800 h-3 rounded-full overflow-hidden mb-2">
-                        <div id="p2p-progress-bar" class="bg-sky-500 h-full w-0 transition-all duration-150"></div>
-                    </div>
-                    <span id="p2p-progress-percent" class="text-xs font-mono text-sky-400 font-bold">0%</span>
-                </div>
-
-                <!-- Blank Video State Placeholder -->
-                <div id="video-placeholder"
-                    class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 p-8 text-center z-10">
-                    <div
-                        class="w-24 h-24 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-6 shadow-2xl">
-                        <i class="fa-solid fa-file-video text-4xl text-sky-400 animate-pulse"></i>
-                    </div>
-                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">No Video Loaded Yet</h2>
-                    <p class="text-slate-400 text-sm max-w-md mb-6">
-                        Scan the QR code with your phone camera to pick a video file from your device, cast a YouTube
-                        link, or
-                        select sample language lessons!
-                    </p>
-                    <button onclick="toggleQRModal(true)"
-                        class="bg-sky-600 hover:bg-sky-500 text-white px-6 py-3 rounded-2xl font-medium text-sm flex items-center shadow-lg shadow-sky-600/30 transition">
-                        <i class="fa-solid fa-qrcode mr-2 text-lg"></i> Scan QR Code with Phone
-                    </button>
-                </div>
-            </main>
-
-            <!-- Bottom Laptop Status Bar -->
-            <footer
-                class="glass-panel z-20 px-6 py-2.5 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800">
-                <div class="flex items-center space-x-4">
-                    <span id="video-title-display" class="font-medium text-slate-200 truncate max-w-xs md:max-w-md">No
-                        video
-                        active</span>
-                    <span id="video-time-display"
-                        class="font-mono bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-slate-300">00:00
-                        /
-                        00:00</span>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <span id="playback-speed-badge"
-                        class="bg-slate-800 px-2.5 py-1 rounded-lg text-sky-400 font-semibold border border-slate-700">1.0x
-                        Speed</span>
-                    <span id="a-b-loop-badge"
-                        class="hidden bg-purple-500/20 text-purple-300 px-2.5 py-1 rounded-lg font-semibold border border-purple-500/30">A-B
-                        Loop Active</span>
-                </div>
-            </footer>
-
-            <!-- QR CODE CONNECTION MODAL OVERLAY -->
-            <div id="qr-modal"
-                class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-                <div
-                    class="glass-panel bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-md w-full shadow-2xl relative text-center">
-                    <button onclick="toggleQRModal(false)"
-                        class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 text-xl transition">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-
-                    <div
-                        class="inline-block px-3 py-1 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 text-xs font-semibold uppercase tracking-wider mb-3">
-                        Teacher Handheld Remote
-                    </div>
-                    <h3 class="text-2xl font-bold text-white mb-2">Connect Your Phone</h3>
-                    <p class="text-slate-400 text-xs mb-6">Scan this QR code with your phone camera to open the remote
-                        controller.
-                    </p>
-
-                    <div class="bg-white p-5 rounded-2xl inline-block shadow-inner mb-6 relative">
-                        <div id="qrcode-canvas" class="flex items-center justify-center min-w-[200px] min-h-[200px]">
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-left mb-6">
-                        <div class="text-[11px] text-slate-500 uppercase font-semibold tracking-wider mb-1">Direct
-                            Remote Link</div>
-                        <div class="flex items-center justify-between">
-                            <input id="direct-room-url" type="text" readonly
-                                class="bg-transparent text-xs text-sky-300 font-mono w-full focus:outline-none"
-                                value="...">
-                            <button onclick="copyRoomURL()"
-                                class="ml-2 text-slate-400 hover:text-white text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition whitespace-nowrap">
-                                <i class="fa-regular fa-copy mr-1"></i> Copy
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="text-xs text-slate-400 flex items-center justify-center space-x-2">
-                        <i class="fa-solid fa-wifi text-emerald-400"></i>
-                        <span>Room Code: <strong id="modal-room-code"
-                                class="text-white font-mono text-sm tracking-widest ml-1">------</strong></span>
-                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- PHONE REMOTE CONTROLLER MODE -->
-        <div id="phone-view" class="hidden flex-1 flex flex-col min-h-screen bg-slate-950 text-slate-100 pb-8">
-            <!-- Phone Header -->
-            <header
-                class="sticky top-0 z-30 glass-panel bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div
-                        class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold">
-                        <i class="fa-solid fa-mobile-screen"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-sm font-bold text-white leading-tight">EduCast Remote</h1>
-                        <p id="phone-room-status" class="text-[10px] text-emerald-400 font-medium">Connecting to Room...
-                        </p>
-                    </div>
-                </div>
-
-                <button onclick="exitPhoneMode()"
-                    class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
-                    Disconnect
-                </button>
-            </header>
-
-            <!-- Main Phone Control Content Tabs -->
-            <main class="flex-1 p-4 max-w-md mx-auto w-full space-y-5">
-
-                <!-- Tab Navigators -->
-                <div
-                    class="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-medium text-slate-400">
-                    <button id="tab-btn-controls" onclick="switchPhoneTab('controls')"
-                        class="py-2.5 rounded-xl bg-sky-600 text-white font-semibold shadow transition">
-                        <i class="fa-solid fa-sliders mr-1"></i> Controls
-                    </button>
-                    <button id="tab-btn-videos" onclick="switchPhoneTab('videos')"
-                        class="py-2.5 rounded-xl hover:text-white transition">
-                        <i class="fa-solid fa-folder-open mr-1"></i> Videos
-                    </button>
-                    <button id="tab-btn-tools" onclick="switchPhoneTab('tools')"
-                        class="py-2.5 rounded-xl hover:text-white transition">
-                        <i class="fa-solid fa-chalkboard-user mr-1"></i> Tools
-                    </button>
-                </div>
-
-                <!-- PANEL 1: REMOTE CONTROLS -->
-                <div id="phone-tab-controls" class="space-y-4">
-                    <!-- Active Video Title Info -->
-                    <div class="glass-card p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-                        <div class="truncate mr-3">
-                            <span class="text-[10px] uppercase tracking-wider text-sky-400 font-semibold block">Now
-                                Playing</span>
-                            <h3 id="phone-video-title" class="text-sm font-bold text-white truncate">No video loaded
-                            </h3>
-                        </div>
-                        <div id="phone-time-badge"
-                            class="text-xs font-mono bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-slate-300 whitespace-nowrap">
-                            00:00
-                        </div>
-                    </div>
-
-                    <!-- Video Seek Slider -->
-                    <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
-                        <div class="flex justify-between text-xs text-slate-400 font-mono">
-                            <span id="phone-current-time">00:00</span>
-                            <span id="phone-duration-time">00:00</span>
-                        </div>
-                        <input id="phone-seek-slider" type="range" min="0" max="100" value="0" step="0.1"
-                            onchange="handleSeekInput(this.value)" oninput="updateSeekTimeLabel(this.value)"
-                            class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
-                    </div>
-
-                    <!-- Main Playback Tactile Buttons -->
-                    <div class="glass-card p-5 rounded-2xl border border-slate-800 flex items-center justify-around">
-                        <button onclick="sendRemoteCommand('skip', -10)"
-                            class="w-14 h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex flex-col items-center justify-center transition border border-slate-700 shadow-md">
-                            <i class="fa-solid fa-rotate-left text-lg"></i>
-                            <span class="text-[9px] font-bold mt-0.5">-10s</span>
-                        </button>
-
-                        <button id="phone-play-btn" onclick="togglePlayPause()"
-                            class="w-20 h-20 rounded-3xl bg-sky-500 hover:bg-sky-400 active:scale-95 text-white flex items-center justify-center text-2xl transition shadow-lg shadow-sky-500/30">
-                            <i id="phone-play-icon" class="fa-solid fa-play ml-1"></i>
-                        </button>
-
-                        <button onclick="sendRemoteCommand('skip', 10)"
-                            class="w-14 h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 flex flex-col items-center justify-center transition border border-slate-700 shadow-md">
-                            <i class="fa-solid fa-rotate-right text-lg"></i>
-                            <span class="text-[9px] font-bold mt-0.5">+10s</span>
-                        </button>
-                    </div>
-
-                    <!-- Language Learning Speed Preset Bar -->
-                    <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
-                        <div class="text-xs font-medium text-slate-400 flex items-center justify-between">
-                            <span><i class="fa-solid fa-gauge-high text-sky-400 mr-1.5"></i> Playback Speed (Language
-                                Practice)</span>
-                            <span id="phone-speed-label" class="font-bold text-sky-400">1.0x</span>
-                        </div>
-                        <div class="grid grid-cols-6 gap-1.5 pt-1">
-                            <button onclick="setSpeed(0.5)"
-                                class="speed-btn py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 active:bg-sky-600 transition">0.5x</button>
-                            <button onclick="setSpeed(0.75)"
-                                class="speed-btn py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 active:bg-sky-600 transition">0.75x</button>
-                            <button onclick="setSpeed(1.0)"
-                                class="speed-btn py-2 text-xs font-semibold rounded-xl bg-sky-600 text-white border border-sky-500 shadow">1.0x</button>
-                            <button onclick="setSpeed(1.25)"
-                                class="speed-btn py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 active:bg-sky-600 transition">1.25x</button>
-                            <button onclick="setSpeed(1.5)"
-                                class="speed-btn py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 active:bg-sky-600 transition">1.5x</button>
-                            <button onclick="setSpeed(2.0)"
-                                class="speed-btn py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 active:bg-sky-600 transition">2.0x</button>
-                        </div>
-                    </div>
-
-                    <!-- Volume & Fullscreen Tools -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="glass-card p-3.5 rounded-2xl border border-slate-800 space-y-1.5">
-                            <div class="text-[11px] font-medium text-slate-400 flex justify-between">
-                                <span><i class="fa-solid fa-volume-high text-slate-400"></i> Volume</span>
-                            </div>
-                            <input type="range" min="0" max="1" step="0.05" value="1"
-                                oninput="sendRemoteCommand('volume', parseFloat(this.value))"
-                                class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
-                        </div>
-
-                        <button onclick="sendRemoteCommand('fullscreen')"
-                            class="glass-card p-3.5 rounded-2xl border border-slate-800 flex items-center justify-center space-x-2 text-xs font-semibold text-slate-300 hover:text-white active:bg-slate-800 transition">
-                            <i class="fa-solid fa-expand text-sky-400"></i>
-                            <span>Toggle Fullscreen</span>
-                        </button>
-                    </div>
-
-                    <!-- A-B Practice Loop Tool -->
-                    <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
-                        <div class="flex items-center justify-between text-xs font-medium text-slate-300">
-                            <span><i class="fa-solid fa-repeat text-purple-400 mr-1.5"></i> Phrase Pronunciation Loop
-                                (A-B)</span>
-                            <span id="ab-status-text" class="text-[10px] text-slate-500">Off</span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 pt-1">
-                            <button id="btn-set-a" onclick="setABLoop('A')"
-                                class="py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:bg-purple-600/30 transition">
-                                Set Point A
-                            </button>
-                            <button id="btn-set-b" onclick="setABLoop('B')"
-                                class="py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:bg-purple-600/30 transition">
-                                Set Point B
-                            </button>
-                            <button onclick="setABLoop('clear')"
-                                class="py-2 text-xs font-semibold rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 transition">
-                                Clear Loop
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PANEL 2: VIDEO SOURCE SELECTOR -->
-                <div id="phone-tab-videos" class="hidden space-y-4">
-                    <!-- Web Link / YouTube / Instagram / Facebook Link Input -->
-                    <div class="glass-card p-4 rounded-2xl border border-sky-500/30 space-y-3 bg-slate-900/80">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-white flex items-center">
-                                <i class="fa-solid fa-link text-sky-400 mr-1.5"></i> Paste Video Link
-                            </span>
-                            <div class="flex space-x-1 text-[10px]">
-                                <span class="bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded"><i
-                                        class="fa-brands fa-youtube"></i></span>
-                                <span class="bg-pink-500/20 text-pink-400 px-1.5 py-0.5 rounded"><i
-                                        class="fa-brands fa-instagram"></i></span>
-                                <span class="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded"><i
-                                        class="fa-brands fa-facebook"></i></span>
-                            </div>
-                        </div>
-
-                        <div class="flex space-x-2">
-                            <input id="link-input" type="url"
-                                placeholder="Paste YouTube, IG Reel, FB, or Web MP4 URL..."
-                                class="bg-slate-950 text-xs text-white px-3 py-2.5 rounded-xl border border-slate-800 w-full focus:outline-none focus:border-sky-500">
-                            <button onclick="castVideoFromLink()"
-                                class="bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs px-4 py-2.5 rounded-xl font-semibold whitespace-nowrap transition shadow-lg shadow-sky-600/30">
-                                Cast Link
-                            </button>
-                        </div>
-
-                        <p class="text-[10px] text-slate-400">Supports YouTube videos & Shorts, Instagram Reels,
-                            Facebook Videos,
-                            and direct MP4/WebM URLs.</p>
-                    </div>
-
-                    <!-- Stream Mobile Device File to Laptop via P2P -->
-                    <div
-                        class="glass-card p-5 rounded-2xl border border-slate-800 text-center relative overflow-hidden bg-gradient-to-b from-slate-900 to-transparent">
-                        <div
-                            class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 flex items-center justify-center mx-auto mb-3">
-                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
-                        </div>
-                        <h3 class="text-sm font-bold text-white mb-1">Cast Local Video File from Phone</h3>
-                        <p class="text-xs text-slate-400 mb-4">Select any video stored on your mobile phone to stream
-                            directly to
-                            the laptop screen via P2P.</p>
-
-                        <label
-                            class="cursor-pointer inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 text-white font-semibold text-xs transition shadow-md">
-                            <i class="fa-solid fa-folder-open mr-2 text-sky-400"></i> Choose Mobile Video File
-                            <input id="phone-file-input" type="file" accept="video/*"
-                                onchange="handlePhoneVideoFileSelect(event)" class="hidden">
-                        </label>
-
-                        <!-- P2P Upload Progress Bar -->
-                        <div id="upload-progress-container" class="hidden mt-4 text-left space-y-1">
-                            <div class="flex justify-between text-[11px] text-slate-300">
-                                <span id="upload-status-text">Transferring file P2P...</span>
-                                <span id="upload-percentage">0%</span>
-                            </div>
-                            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                <div id="upload-progress-bar" class="bg-sky-500 h-full w-0 transition-all duration-150">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pre-loaded Language Lesson Demo Videos -->
-                    <div class="space-y-2">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">
-                            <i class="fa-solid fa-graduation-cap text-sky-400 mr-1"></i> Sample Language Practice Videos
-                        </h4>
-
-                        <div class="space-y-2">
-                            <button onclick="loadSampleVideo('french')"
-                                class="w-full p-3.5 glass-card hover:bg-slate-800 rounded-2xl border border-slate-800 flex items-center justify-between text-left transition group">
-                                <div class="flex items-center space-x-3">
-                                    <div
-                                        class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-lg">
-                                        🇫🇷
-                                    </div>
-                                    <div>
-                                        <h5 class="text-xs font-bold text-white">French Pronunciation Basics</h5>
-                                        <p class="text-[10px] text-slate-400">Vowels & Conversation Sample</p>
-                                    </div>
-                                </div>
-                                <i
-                                    class="fa-solid fa-circle-play text-slate-500 group-hover:text-sky-400 transition text-xl"></i>
-                            </button>
-
-                            <button onclick="loadSampleVideo('spanish')"
-                                class="w-full p-3.5 glass-card hover:bg-slate-800 rounded-2xl border border-slate-800 flex items-center justify-between text-left transition group">
-                                <div class="flex items-center space-x-3">
-                                    <div
-                                        class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg">
-                                        🇪🇸
-                                    </div>
-                                    <div>
-                                        <h5 class="text-xs font-bold text-white">Spanish Grammar Dialogue</h5>
-                                        <p class="text-[10px] text-slate-400">Verb Tenses & Common Phrases</p>
-                                    </div>
-                                </div>
-                                <i
-                                    class="fa-solid fa-circle-play text-slate-500 group-hover:text-sky-400 transition text-xl"></i>
-                            </button>
-
-                            <button onclick="loadSampleVideo('english')"
-                                class="w-full p-3.5 glass-card hover:bg-slate-800 rounded-2xl border border-slate-800 flex items-center justify-between text-left transition group">
-                                <div class="flex items-center space-x-3">
-                                    <div
-                                        class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg">
-                                        🇬🇧
-                                    </div>
-                                    <div>
-                                        <h5 class="text-xs font-bold text-white">English Listening Comprehension</h5>
-                                        <p class="text-[10px] text-slate-400">Business English Discussion</p>
-                                    </div>
-                                </div>
-                                <i
-                                    class="fa-solid fa-circle-play text-slate-500 group-hover:text-sky-400 transition text-xl"></i>
-                            </button>
-
-                            <button onclick="loadSampleVideo('arabic')"
-                                class="w-full p-3.5 glass-card hover:bg-slate-800 rounded-2xl border border-slate-800 flex items-center justify-between text-left transition group">
-                                <div class="flex items-center space-x-3">
-                                    <div
-                                        class="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-300 flex items-center justify-center font-bold text-lg">
-                                        🇸🇦
-                                    </div>
-                                    <div>
-                                        <h5 class="text-xs font-bold text-white">Arabic Vocabulary & Phonetics</h5>
-                                        <p class="text-[10px] text-slate-400">Alphabet & Expression Practice</p>
-                                    </div>
-                                </div>
-                                <i
-                                    class="fa-solid fa-circle-play text-slate-500 group-hover:text-sky-400 transition text-xl"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- PANEL 3: TEACHER CLASSROOM TOOLS -->
-                <div id="phone-tab-tools" class="hidden space-y-4">
-                    <!-- Laser Pointer Trackpad -->
-                    <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
-                        <div class="flex items-center justify-between text-xs font-medium text-slate-300">
-                            <span><i class="fa-solid fa-hand-pointer text-red-400 mr-1.5"></i> Touch Laser Pointer
-                                Trackpad</span>
-                            <span class="text-[10px] text-slate-500">Touch & Drag Below</span>
-                        </div>
-
-                        <div id="phone-trackpad"
-                            class="w-full h-44 bg-slate-950 rounded-xl border border-slate-800 flex flex-col items-center justify-center relative touch-none select-none cursor-crosshair">
-                            <div
-                                class="w-10 h-10 rounded-full border border-dashed border-red-500/50 flex items-center justify-center text-red-400/80 pointer-events-none">
-                                <i class="fa-solid fa-crosshairs text-lg"></i>
-                            </div>
-                            <span class="text-[11px] text-slate-500 mt-2 pointer-events-none">Drag finger here to move
-                                laser on laptop
-                                display</span>
-                        </div>
-                    </div>
-
-                    <!-- Broadcast Subtitle / Note Banner -->
-                    <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-3">
-                        <div class="text-xs font-medium text-slate-300 flex items-center justify-between">
-                            <span><i class="fa-solid fa-closed-captioning text-sky-400 mr-1.5"></i> Live Screen Text
-                                Note /
-                                Subtitle</span>
-                        </div>
-
-                        <div class="flex space-x-2">
-                            <input id="subtitle-input" type="text" placeholder="Type vocabulary or grammar note..."
-                                class="bg-slate-950 text-xs text-white px-3 py-2.5 rounded-xl border border-slate-800 w-full focus:outline-none focus:border-sky-500">
-                            <button onclick="broadcastSubtitle()"
-                                class="bg-sky-600 hover:bg-sky-500 text-white text-xs px-4 py-2.5 rounded-xl font-semibold whitespace-nowrap active:scale-95 transition shadow-lg shadow-sky-600/20">
-                                Send
-                            </button>
-                        </div>
-
-                        <div class="flex justify-end">
-                            <button onclick="clearSubtitle()"
-                                class="text-[11px] text-slate-400 hover:text-red-400 flex items-center space-x-1 transition">
-                                <i class="fa-solid fa-trash-can"></i> <span>Clear Screen Note</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Quick Timestamp Bookmarks -->
-                    <div class="glass-card p-4 rounded-2xl border border-slate-800 space-y-3">
-                        <div class="flex items-center justify-between text-xs font-medium text-slate-300">
-                            <span><i class="fa-solid fa-bookmark text-amber-400 mr-1.5"></i> Lesson Bookmarks</span>
-                            <button onclick="addBookmark()"
-                                class="text-[11px] bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-lg border border-amber-500/30 hover:bg-amber-500/30 transition font-semibold">
-                                + Mark Timestamp
-                            </button>
-                        </div>
-
-                        <div id="bookmarks-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                            <div class="text-[11px] text-slate-500 text-center py-2">No bookmarks added yet. Tap above
-                                to mark key
-                                video moments.</div>
-                        </div>
-                    </div>
-                </div>
-
-            </main>
-        </div>
-
-        <!-- PHONE CONNECTION ENTRY MODAL -->
-        <div id="phone-connect-modal"
-            class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-            <div
-                class="glass-panel bg-slate-900 border border-slate-700 p-6 rounded-3xl max-w-sm w-full shadow-2xl relative">
-                <button onclick="hidePhoneConnectModal()"
-                    class="absolute top-4 right-4 text-slate-400 hover:text-white p-2 transition">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-
-                <h3 class="text-xl font-bold text-white mb-1">Enter Room Code</h3>
-                <p class="text-xs text-slate-400 mb-5">Type the 6-character room code displayed on your laptop screen.
-                </p>
-
-                <form onsubmit="handleManualRoomSubmit(event)" class="space-y-4">
-                    <div>
-                        <input id="manual-room-input" type="text" maxlength="6" uppercase placeholder="e.g. EDU88X"
-                            class="w-full bg-slate-950 border border-slate-800 text-center text-2xl font-mono tracking-widest text-sky-400 py-3.5 rounded-2xl focus:outline-none focus:border-sky-500 uppercase">
-                    </div>
-                    <button type="submit"
-                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-emerald-600/20">
-                        Connect Remote Control
-                    </button>
-                </form>
-            </div>
-        </div>
-
     </div>
 
-    <!-- Application Logic -->
+    <!-- ROOM SCREEN -->
+    <div id="room-screen" class="hidden flex-1 flex flex-col h-screen w-full bg-black overflow-hidden relative">
+        <!-- Header -->
+        <header class="absolute top-0 inset-x-0 z-40 bg-gradient-to-b from-black/80 to-transparent px-4 py-4 flex items-center justify-between transition-opacity duration-300 hover:opacity-100" id="room-header">
+            <div class="flex items-center space-x-3">
+                <div class="bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/50 flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" id="connection-dot"></span>
+                    <span class="text-xs font-mono text-slate-300">ROOM:</span>
+                    <span id="display-room-code" class="text-sm font-bold text-brand-500 tracking-wider">----</span>
+                </div>
+                <span id="connection-status" class="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">Waiting for peer...</span>
+            </div>
+            <button onclick="leaveRoom()" class="bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 px-3 py-1.5 rounded-xl text-xs font-bold transition border border-rose-500/30 backdrop-blur-md">
+                Leave
+            </button>
+        </header>
+
+        <!-- Video Area -->
+        <main class="flex-1 relative flex items-center justify-center w-full h-full bg-black group">
+            
+            <!-- Default Placeholder -->
+            <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 p-8 text-center z-10">
+                <i class="fa-solid fa-film text-5xl text-slate-700 mb-4"></i>
+                <h2 class="text-xl font-bold text-slate-400">Waiting for a video link...</h2>
+            </div>
+
+            <!-- HTML5 Video (Direct Links) -->
+            <video id="html-video" class="hidden w-full h-full object-contain" playsinline controls></video>
+
+            <!-- YouTube Video -->
+            <div id="youtube-wrapper" class="hidden w-full h-full pointer-events-none sm:pointer-events-auto">
+                <div id="youtube-player" class="w-full h-full"></div>
+            </div>
+
+            <!-- Sync Overlay Badge -->
+            <div id="sync-badge" class="absolute pointer-events-none opacity-0 transition-all duration-300 transform scale-125 z-30 bg-black/60 border border-brand-500 text-brand-500 w-24 h-24 rounded-full flex items-center justify-center text-4xl shadow-2xl backdrop-blur-md">
+                <i id="sync-icon" class="fa-solid fa-play"></i>
+            </div>
+        </main>
+
+        <!-- Bottom Controls -->
+        <footer class="absolute bottom-0 inset-x-0 z-40 bg-gradient-to-t from-black via-black/90 to-transparent p-4 pb-6 transition-opacity duration-300">
+            <div class="max-w-2xl mx-auto bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl border border-slate-700/50 shadow-2xl flex items-center space-x-2">
+                <input id="video-link-input" type="url" placeholder="Paste YouTube or MP4 link here..." class="flex-1 bg-transparent text-sm text-white px-3 py-2 focus:outline-none placeholder-slate-500">
+                <button onclick="loadVideoFromInput()" class="bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-sm px-4 py-2 rounded-xl font-bold transition shadow-md">
+                    Play & Sync
+                </button>
+            </div>
+        </footer>
+    </div>
+
     <script src="app.js"></script>
 </body>
 
