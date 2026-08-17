@@ -4,7 +4,26 @@
 #laptop-yt-wrapper {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%;
+    height: 100%;
     background: #000;
+}
+
+/* YT.Player injects an <iframe> — make it fill the wrapper */
+#laptop-yt-wrapper iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    border: 0;
+}
+
+/* Placeholder div YT.Player replaces — must also fill wrapper */
+#yt-player-mount {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 /* ── HTML5 direct video ─────────────────────────────────────── */

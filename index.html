@@ -78,15 +78,15 @@
             <video id="laptop-video" class="hidden object-contain bg-black" playsinline
                 style="position:absolute;inset:0;width:100%;height:100%;"></video>
 
-            <!-- YouTube Embed — iframe injected by JS via postMessage approach -->
-            <div id="laptop-yt-wrapper" class="hidden" style="position:absolute;inset:0;"></div>
+            <!-- YouTube Embed — YT.Player API mounts here; JS sets display:block when active -->
+            <div id="laptop-yt-wrapper" style="display:none;position:absolute;inset:0;width:100%;height:100%;background:#000;"></div>
 
             <!-- Facebook / Instagram Embed -->
             <!-- JS adds .vertical or .horizontal class to control aspect ratio -->
-            <div id="laptop-iframe-wrapper" class="hidden" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#000;">
+            <div id="laptop-iframe-wrapper" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;background:#000;">
                 <iframe id="laptop-iframe" class="border-0"
                     allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-                <!-- Click-to-play notice (FB/IG block programmatic autoplay) -->
+                <!-- Click-to-play notice (FB/IG may block programmatic autoplay) -->
                 <div id="fb-click-notice" class="hidden absolute inset-0 flex flex-col items-center justify-center z-10" style="pointer-events:none;">
                     <div class="bg-black/70 backdrop-blur-md rounded-2xl px-6 py-4 text-center border border-white/10">
                         <i class="fa-solid fa-hand-pointer text-3xl text-amber-400 mb-2"></i>
