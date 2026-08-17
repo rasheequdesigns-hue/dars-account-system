@@ -75,23 +75,26 @@
             </div>
 
             <!-- HTML5 Video (Direct / MP4) -->
-            <video id="laptop-video" class="hidden object-contain bg-black" playsinline
-                style="position:absolute;inset:0;width:100%;height:100%;"></video>
+            <video id="laptop-video" playsinline
+                style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;"></video>
 
-            <!-- YouTube Embed — YT.Player API mounts here; JS sets display:block when active -->
+            <!-- YouTube Embed — YT.Player mounts here -->
             <div id="laptop-yt-wrapper" style="display:none;position:absolute;inset:0;width:100%;height:100%;background:#000;"></div>
 
             <!-- Facebook / Instagram Embed -->
-            <!-- JS adds .vertical or .horizontal class to control aspect ratio -->
             <div id="laptop-iframe-wrapper" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;background:#000;">
                 <iframe id="laptop-iframe" class="border-0"
                     allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-                <!-- Click-to-play notice (FB/IG may block programmatic autoplay) -->
+
+                <!-- Autoplay trigger overlay — invisible, covers the iframe, JS clicks it to satisfy browser gesture requirement -->
+                <div id="fb-autoplay-overlay" style="display:none;position:absolute;inset:0;z-index:5;cursor:pointer;background:transparent;"></div>
+
+                <!-- Fallback notice shown only if autoplay still blocked after attempt -->
                 <div id="fb-click-notice" class="hidden absolute inset-0 flex flex-col items-center justify-center z-10" style="pointer-events:none;">
                     <div class="bg-black/70 backdrop-blur-md rounded-2xl px-6 py-4 text-center border border-white/10">
                         <i class="fa-solid fa-hand-pointer text-3xl text-amber-400 mb-2"></i>
-                        <p class="text-white text-sm font-bold">Click the video to start playing</p>
-                        <p class="text-slate-400 text-xs mt-1">Facebook/Instagram require a click on the laptop</p>
+                        <p class="text-white text-sm font-bold">Tap anywhere to start playing</p>
+                        <p class="text-slate-400 text-xs mt-1">Tap the screen once to allow video</p>
                     </div>
                 </div>
             </div>
@@ -106,81 +109,76 @@
 
     <!-- ========================================================= -->
     <!-- PHONE CONTROLLER SCREEN                                    -->
-    <!-- Paste link, play/pause — controls the laptop              -->
+    <!-- Full-screen: video plays in background, controls overlay  -->
     <!-- ========================================================= -->
-    <div id="screen-phone" class="hidden flex-1 flex flex-col min-h-screen bg-slate-950">
+    <div id="screen-phone" class="hidden" style="position:fixed;inset:0;background:#000;overflow:hidden;">
 
-        <!-- Phone Header -->
-        <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-2.5">
-                <div class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
-                    <i class="fa-solid fa-mobile-screen-button text-sm"></i>
-                </div>
-                <div>
-                    <div class="text-sm font-bold text-white">Phone Remote</div>
-                    <div id="phone-conn-status" class="text-[10px] text-amber-400 font-medium">Connecting...</div>
+        <!-- ── Video preview background (mirrors what laptop plays) -->
+        <!-- Not actual video — just a dark backdrop with a subtle pattern -->
+        <div id="phone-bg" style="position:absolute;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%);"></div>
+
+        <!-- ── Now Playing info (shown when a video is loaded) -->
+        <div id="phone-now-playing" style="display:none;position:absolute;top:0;inset-x:0;z-index:10;padding:16px 20px 0;">
+            <div style="background:rgba(0,0,0,0.5);backdrop-filter:blur(12px);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,0.08);">
+                <i id="phone-platform-icon" class="fa-brands fa-youtube" style="color:#f87171;font-size:18px;"></i>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;color:#94a3b8;font-weight:500;">Now Playing</div>
+                    <div id="phone-video-url" style="font-size:11px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
                 </div>
             </div>
-            <button onclick="window.location.href = window.location.pathname" class="text-xs text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded-full border border-rose-500/20 transition">
+        </div>
+
+        <!-- ── Controls overlay (fades out, reappears on tap) -->
+        <div id="phone-controls-overlay" style="position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+
+            <!-- Connection status pill -->
+            <div id="phone-status-pill" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);white-space:nowrap;">
+                <div style="background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:6px 14px;display:flex;align-items:center;gap:6px;">
+                    <span id="phone-dot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;animation:pulse 1.5s infinite;"></span>
+                    <span id="phone-conn-status" style="font-size:11px;color:#f59e0b;font-weight:600;">Connecting...</span>
+                </div>
+            </div>
+
+            <!-- Hint text — changes based on state -->
+            <p id="phone-hint" style="font-size:13px;color:rgba(255,255,255,0.5);text-align:center;padding:0 32px;line-height:1.5;">
+                Copy a video link, then tap Play
+            </p>
+
+            <!-- ── Big Play/Pause button ── -->
+            <button id="phone-playpause-btn" onclick="handlePlayPauseTap()"
+                style="width:110px;height:110px;border-radius:50%;background:rgba(14,165,233,0.9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 0 rgba(14,165,233,0.4);animation:ripple 2s infinite;transition:transform 0.15s,background 0.2s;-webkit-tap-highlight-color:transparent;">
+                <i id="phone-playpause-icon" class="fa-solid fa-play" style="font-size:40px;color:#fff;margin-left:6px;"></i>
+            </button>
+
+            <!-- Skip buttons row (only visible when a video is playing) -->
+            <div id="phone-skip-row" style="display:none;flex-direction:row;gap:16px;">
+                <button onclick="sendCommand('skip',-10)" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:50px;padding:10px 20px;color:#cbd5e1;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent;">
+                    <i class="fa-solid fa-rotate-left"></i> 10s
+                </button>
+                <button onclick="sendCommand('skip',10)" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:50px;padding:10px 20px;color:#cbd5e1;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent;">
+                    <i class="fa-solid fa-rotate-right"></i> 10s
+                </button>
+            </div>
+
+            <!-- Disconnect button -->
+            <button onclick="window.location.href = window.location.pathname"
+                style="position:absolute;bottom:24px;right:20px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:999px;padding:6px 14px;font-size:11px;color:#f87171;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;">
                 Disconnect
             </button>
-        </header>
 
-        <!-- Phone Controls -->
-        <main class="flex-1 flex flex-col p-4 space-y-4 max-w-md mx-auto w-full">
-
-            <!-- Paste Link Card -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-link text-brand-400"></i>
-                    <h2 class="text-sm font-bold text-white">Paste Video Link</h2>
-                    <span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-semibold"><i class="fa-brands fa-youtube"></i> YouTube</span>
-                    <span class="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-semibold"><i class="fa-brands fa-facebook"></i> FB</span>
-                    <span class="text-[10px] bg-pink-500/20 text-pink-400 px-1.5 py-0.5 rounded font-semibold"><i class="fa-brands fa-instagram"></i> IG</span>
-                </div>
-                <p class="text-[11px] text-slate-400">Copy any video link from WhatsApp, YouTube, Facebook, or Instagram and paste it here — it will play on the big screen instantly.</p>
-                <div class="flex space-x-2">
-                    <input id="phone-link-input" type="url" placeholder="Paste link here..." class="flex-1 bg-slate-950 border border-slate-700 text-sm text-white px-3 py-2.5 rounded-xl focus:outline-none focus:border-brand-500 placeholder-slate-600 transition">
-                    <button onclick="sendVideoLink()" class="bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-sm px-4 py-2.5 rounded-xl font-bold transition shadow-lg shadow-brand-600/25">
-                        <i class="fa-solid fa-play ml-0.5"></i>
-                    </button>
-                </div>
+            <!-- Room info -->
+            <div style="position:absolute;bottom:24px;left:20px;">
+                <span id="phone-conn-detail" style="font-size:10px;color:rgba(255,255,255,0.3);">Connecting...</span>
             </div>
+        </div>
 
-            <!-- Play / Pause Big Button -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col items-center space-y-4">
-                <h2 class="text-sm font-bold text-white self-start">Playback Control</h2>
-
-                <button id="phone-playpause-btn" onclick="togglePlayPause()" class="w-28 h-28 rounded-full bg-brand-600 hover:bg-brand-500 active:scale-95 text-white flex items-center justify-center shadow-2xl shadow-brand-600/30 transition-all">
-                    <i id="phone-playpause-icon" class="fa-solid fa-play text-4xl ml-1.5"></i>
-                </button>
-
-                <p class="text-[11px] text-slate-500 text-center">Tap to play or pause on the big screen</p>
-            </div>
-
-            <!-- Skip Buttons -->
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="sendCommand('skip', -10)" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-800 rounded-2xl p-4 flex flex-col items-center space-y-1 transition">
-                    <i class="fa-solid fa-rotate-left text-xl text-slate-300"></i>
-                    <span class="text-xs font-bold text-slate-400">-10 sec</span>
-                </button>
-                <button onclick="sendCommand('skip', 10)" class="bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-800 rounded-2xl p-4 flex flex-col items-center space-y-1 transition">
-                    <i class="fa-solid fa-rotate-right text-xl text-slate-300"></i>
-                    <span class="text-xs font-bold text-slate-400">+10 sec</span>
-                </button>
-            </div>
-
-            <!-- Connection Info -->
-            <div class="bg-slate-900/50 border border-slate-800 rounded-xl p-3 flex items-center space-x-3">
-                <span id="phone-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"></span>
-                <span id="phone-conn-detail" class="text-[11px] text-slate-400">Establishing P2P connection to laptop...</span>
-            </div>
-        </main>
+        <!-- Tap-anywhere-to-wake catcher (below overlay z-index) -->
+        <div id="phone-tap-catcher" onclick="wakeControls()" style="position:absolute;inset:0;z-index:15;"></div>
     </div>
 
 
     <!-- ========================================================= -->
-    <!-- HOME SCREEN (fallback — only shown briefly if needed)     -->
+    <!-- HOME SCREEN (fallback)                                     -->
     <!-- ========================================================= -->
     <div id="screen-home" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
         <i class="fa-solid fa-play text-5xl text-brand-500 mb-4"></i>

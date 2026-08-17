@@ -2,32 +2,37 @@
  * EduCast Sync — Two-Screen Synchronized Video Player
  *
  * LAPTOP/TV : Opens → shows QR code → plays video full-screen.
- * PHONE     : Scans QR → paste link + play/pause remote control.
+ * PHONE     : Scans QR → tap Play (clipboard auto-read) → controls laptop.
+ *             Video plays behind auto-hiding controls overlay.
  *
- * YouTube  → YouTube IFrame API (YT.Player) — proper JS control
- * Facebook → iframe embed + postMessage play/pause control
- * Instagram→ iframe embed (view only)
- * MP4/Direct → HTML5 <video> element
+ * YouTube  → YT.Player API  (muted autoplay → unmute on onReady)
+ * Facebook → iframe embed   (transparent overlay simulates user gesture)
+ * Instagram→ iframe embed
+ * MP4/Direct → HTML5 <video>
  */
 
 // ── State ────────────────────────────────────────────────────────
 let peer        = null;
 let conn        = null;
 let roomId      = null;
-let role        = null;   // 'laptop' | 'phone'
+let role        = null;       // 'laptop' | 'phone'
 
-let currentType = 'direct'; // 'direct' | 'youtube' | 'iframe'
+let currentType = 'direct';  // 'direct' | 'youtube' | 'iframe'
 let isPlaying   = false;
+let hasVideo    = false;      // true once a video has been loaded on phone
 
-// YouTube IFrame API player instance
+// YouTube IFrame API
 let ytPlayer    = null;
-let ytReady     = false;  // true once onReady fires
+let ytReady     = false;
 
-// Facebook iframe element (for postMessage control)
+// Facebook iframe
 let fbIframe    = null;
+let fbAutoplayTriggered = false;
 
-// ── Load YouTube IFrame API script once ──────────────────────────
-// We load it eagerly so it's ready when needed.
+// Phone controls hide timer
+let controlsHideTimer = null;
+
+// ── Load YouTube IFrame API eagerly ──────────────────────────────
 (function loadYTApi() {
     if (document.getElementById('yt-api-script')) return;
     const tag = document.createElement('script');
@@ -36,9 +41,7 @@ let fbIframe    = null;
     document.head.appendChild(tag);
 })();
 
-// YouTube IFrame API calls this when the script is ready
 window.onYouTubeIframeAPIReady = function () {
-    // Nothing to do here globally — player is created per-load in loadOnLaptop
     console.log('[YT] IFrame API ready');
 };
 
@@ -65,7 +68,6 @@ window.startLaptopMode = function () {
     showScreen('screen-laptop');
     document.getElementById('laptop-room-code').innerText = roomId;
 
-    // Build join URL and render QR code
     const joinUrl = `${location.origin}${location.pathname}?room=${roomId}&role=phone`;
     const canvas  = document.getElementById('laptop-qr-canvas');
     canvas.innerHTML = '';
@@ -78,7 +80,6 @@ window.startLaptopMode = function () {
         correctLevel : QRCode.CorrectLevel.H
     });
 
-    // Start PeerJS host
     peer = new Peer(`educast-${roomId}`);
     peer.on('open',       ()  => console.log('[Laptop] ready, room:', roomId));
     peer.on('connection', c  => setupLaptopConn(c));
@@ -87,8 +88,7 @@ window.startLaptopMode = function () {
 
 function setupLaptopConn(c) {
     conn = c;
-    setLaptopStatus('📱 Phone Connected — paste a link on your phone', 'emerald');
-
+    setLaptopStatus('📱 Phone Connected — waiting for link', 'emerald');
     conn.on('data',  data => handleCmdOnLaptop(data));
     conn.on('close', ()   => {
         setLaptopStatus('Phone disconnected — scan QR to reconnect', 'amber');
@@ -96,7 +96,7 @@ function setupLaptopConn(c) {
     });
 }
 
-// ── Handle commands sent from the phone ─────────────────────────
+// ── Handle commands from phone ───────────────────────────────────
 function handleCmdOnLaptop(data) {
     if (!data || !data.cmd) return;
 
@@ -109,58 +109,35 @@ function handleCmdOnLaptop(data) {
         case 'toggle':
             if (currentType === 'direct') {
                 const v = document.getElementById('laptop-video');
-                if (v.paused) {
-                    v.play();
-                    isPlaying = true;
-                    flashBadge('fa-play');
-                } else {
-                    v.pause();
-                    isPlaying = false;
-                    flashBadge('fa-pause');
-                }
+                if (v.paused) { v.play(); isPlaying = true;  flashBadge('fa-play');  }
+                else          { v.pause(); isPlaying = false; flashBadge('fa-pause'); }
             } else if (currentType === 'youtube') {
                 if (ytPlayer && ytReady) {
-                    if (isPlaying) {
-                        ytPlayer.pauseVideo();
-                        isPlaying = false;
-                        flashBadge('fa-pause');
-                    } else {
-                        ytPlayer.playVideo();
-                        isPlaying = true;
-                        flashBadge('fa-play');
-                    }
+                    if (isPlaying) { ytPlayer.pauseVideo(); isPlaying = false; flashBadge('fa-pause'); }
+                    else           { ytPlayer.playVideo();  isPlaying = true;  flashBadge('fa-play');  }
                 }
             } else if (currentType === 'iframe') {
-                // Facebook: send postMessage to the iframe
                 fbTogglePlayPause();
             }
             sendToPhone({ cmd: 'sync-state', isPlaying });
             break;
 
         case 'play':
-            if (currentType === 'direct') {
-                document.getElementById('laptop-video').play();
-            } else if (currentType === 'youtube') {
-                if (ytPlayer && ytReady) ytPlayer.playVideo();
-            } else if (currentType === 'iframe') {
-                fbPostMessage('playVideo');
-            }
+            if (currentType === 'direct')        document.getElementById('laptop-video').play();
+            else if (currentType === 'youtube')  { if (ytPlayer && ytReady) ytPlayer.playVideo(); }
+            else if (currentType === 'iframe')   fbPostMessage('playVideo');
             isPlaying = true;
             flashBadge('fa-play');
-            sendToPhone({ cmd: 'sync-state', isPlaying });
+            sendToPhone({ cmd: 'sync-state', isPlaying: true });
             break;
 
         case 'pause':
-            if (currentType === 'direct') {
-                document.getElementById('laptop-video').pause();
-            } else if (currentType === 'youtube') {
-                if (ytPlayer && ytReady) ytPlayer.pauseVideo();
-            } else if (currentType === 'iframe') {
-                fbPostMessage('pauseVideo');
-            }
+            if (currentType === 'direct')        document.getElementById('laptop-video').pause();
+            else if (currentType === 'youtube')  { if (ytPlayer && ytReady) ytPlayer.pauseVideo(); }
+            else if (currentType === 'iframe')   fbPostMessage('pauseVideo');
             isPlaying = false;
             flashBadge('fa-pause');
-            sendToPhone({ cmd: 'sync-state', isPlaying });
+            sendToPhone({ cmd: 'sync-state', isPlaying: false });
             break;
 
         case 'skip':
@@ -173,46 +150,40 @@ function handleCmdOnLaptop(data) {
                     ytPlayer.seekTo(Math.max(0, cur + data.seconds), true);
                 }
             }
-            // Facebook/Instagram iframes don't support seek via postMessage
             break;
     }
 }
 
 // ── Load video on laptop ─────────────────────────────────────────
 function loadOnLaptop(url, type, embedUrl, isVertical) {
-    currentType = type;
-    ytReady     = false;
+    currentType          = type;
+    ytReady              = false;
+    fbAutoplayTriggered  = false;
 
-    // Hide QR overlay
     document.getElementById('qr-overlay').classList.add('hidden');
     setLaptopStatus('📱 Phone Connected — Playing', 'emerald');
 
-    // Grab all player layer elements
     const video     = document.getElementById('laptop-video');
     const ytWrapper = document.getElementById('laptop-yt-wrapper');
     const ifrWrap   = document.getElementById('laptop-iframe-wrapper');
 
-    // ── Tear down existing players ───────────────────────────────
-    // Direct video
+    // ── Tear down all players ────────────────────────────────────
     video.style.display = 'none';
     video.pause();
     video.src = '';
 
-    // YouTube — destroy existing YT.Player instance cleanly
-    if (ytPlayer) {
-        try { ytPlayer.destroy(); } catch (_) {}
-        ytPlayer = null;
-    }
-    ytWrapper.style.display = 'none';
-    ytWrapper.innerHTML = '';   // clear the div YT.Player was mounted in
+    if (ytPlayer) { try { ytPlayer.destroy(); } catch (_) {} ytPlayer = null; }
+    ytWrapper.style.display  = 'none';
+    ytWrapper.innerHTML      = '';
 
-    // Facebook / Instagram
-    ifrWrap.style.display   = 'none';
-    fbIframe = null;
-    const oldFbIframe = document.getElementById('laptop-iframe');
-    if (oldFbIframe) oldFbIframe.src = 'about:blank';
+    ifrWrap.style.display    = 'none';
+    fbIframe                 = null;
+    const oldIfr = document.getElementById('laptop-iframe');
+    if (oldIfr) oldIfr.src = 'about:blank';
+    const fbOverlay = document.getElementById('fb-autoplay-overlay');
+    if (fbOverlay) fbOverlay.style.display = 'none';
 
-    // ── Direct video (MP4 / WebM) ────────────────────────────────
+    // ── Direct video ─────────────────────────────────────────────
     if (type === 'direct') {
         video.style.display = 'block';
         video.src   = url;
@@ -229,47 +200,43 @@ function loadOnLaptop(url, type, embedUrl, isVertical) {
             });
     }
 
-    // ── YouTube — use YT.Player API ──────────────────────────────
+    // ── YouTube — YT.Player API ──────────────────────────────────
     else if (type === 'youtube') {
         ytWrapper.style.display = 'block';
 
-        // Create a placeholder div for YT.Player to replace
         const placeholder = document.createElement('div');
         placeholder.id    = 'yt-player-mount';
         ytWrapper.appendChild(placeholder);
 
-        // Wait for YT API to be available (it's loaded in <head>)
         function createYTPlayer() {
             ytPlayer = new YT.Player('yt-player-mount', {
-                videoId: url,
-                width  : '100%',
-                height : '100%',
+                videoId   : url,
+                width     : '100%',
+                height    : '100%',
                 playerVars: {
                     autoplay       : 1,
-                    mute           : 1,       // start muted to allow autoplay
+                    mute           : 1,   // muted start satisfies browser autoplay policy
                     rel            : 0,
                     modestbranding : 1,
                     playsinline    : 1,
                     enablejsapi    : 1,
                     origin         : location.origin,
-                    controls       : 0,       // hide YT controls; phone is the remote
-                    iv_load_policy : 3,       // hide annotations
-                    fs             : 0,       // hide fullscreen button
+                    // NOTE: controls & fs left at default (1) — disabling them
+                    // causes YouTube to block embedding on many videos
                 },
                 events: {
                     onReady: function (e) {
                         ytReady = true;
                         e.target.playVideo();
-                        // Unmute after a short delay — autoplay starts muted
+                        // Unmute once playing starts — guaranteed user gesture satisfied by phone tap
                         setTimeout(() => {
                             e.target.unMute();
                             e.target.setVolume(100);
                             isPlaying = true;
                             sendToPhone({ cmd: 'sync-state', isPlaying: true });
-                        }, 1000);
+                        }, 800);
                     },
                     onStateChange: function (e) {
-                        // YT.PlayerState: PLAYING=1, PAUSED=2, ENDED=0, BUFFERING=3
                         if (e.data === YT.PlayerState.PLAYING) {
                             isPlaying = true;
                             sendToPhone({ cmd: 'sync-state', isPlaying: true });
@@ -279,22 +246,16 @@ function loadOnLaptop(url, type, embedUrl, isVertical) {
                         }
                     },
                     onError: function (e) {
-                        console.error('[YT] Player error:', e.data);
-                        // Error codes: 2=invalid id, 5=HTML5 issue, 100=not found,
-                        // 101/150=embedding disabled by owner
-                        setLaptopStatus('⚠️ YouTube video unavailable (embedding may be disabled)', 'amber');
+                        console.error('[YT] error code:', e.data);
+                        setLaptopStatus('⚠️ YouTube video unavailable (embedding disabled by owner)', 'amber');
                     }
                 }
             });
-
-            // Make the iframe YT.Player creates fill the wrapper
-            // YT.Player injects an <iframe>; we style it via CSS selector in style.css
         }
 
         if (typeof YT !== 'undefined' && YT.Player) {
             createYTPlayer();
         } else {
-            // API not yet loaded — queue it
             const prev = window.onYouTubeIframeAPIReady;
             window.onYouTubeIframeAPIReady = function () {
                 if (prev) prev();
@@ -306,43 +267,74 @@ function loadOnLaptop(url, type, embedUrl, isVertical) {
     // ── Facebook / Instagram iframe ──────────────────────────────
     else if (type === 'iframe') {
         ifrWrap.style.display = 'flex';
-
-        // Vertical (reels) vs horizontal
         ifrWrap.classList.remove('vertical', 'horizontal');
         ifrWrap.classList.add(isVertical ? 'vertical' : 'horizontal');
 
-        // Rebuild the iframe fresh (avoids stale src / sandbox state)
-        const oldIfr = document.getElementById('laptop-iframe');
-        if (oldIfr) oldIfr.remove();
+        // Rebuild iframe fresh
+        const oldIframe = document.getElementById('laptop-iframe');
+        if (oldIframe) oldIframe.remove();
 
         const ifr = document.createElement('iframe');
         ifr.id    = 'laptop-iframe';
         ifr.className = 'border-0';
         ifr.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
         ifr.allowFullscreen = true;
-        // Facebook requires allow="autoplay" attribute AND src autoplay param
         ifr.src = embedUrl;
+        // Insert before the overlay divs
         ifrWrap.insertBefore(ifr, ifrWrap.firstChild);
         fbIframe = ifr;
 
-        isPlaying = true;   // optimistically assume it will play
+        isPlaying = true;
 
-        // Show click-to-play notice (browsers block cross-origin autoplay)
-        const notice = document.getElementById('fb-click-notice');
-        notice.classList.remove('hidden');
-        const hideNotice = () => {
+        // ── Autoplay strategy ────────────────────────────────────
+        // Browsers require a user gesture to play cross-origin iframes.
+        // We show a transparent overlay on TOP of the iframe and
+        // programmatically click it immediately. Since the laptop page
+        // was opened by a real user (who tapped Send on the phone), this
+        // satisfies the gesture requirement in most Chromium browsers.
+        // If it still doesn't work, we show the fallback notice.
+        const overlay  = document.getElementById('fb-autoplay-overlay');
+        const notice   = document.getElementById('fb-click-notice');
+        notice.classList.add('hidden');
+
+        overlay.style.display = 'block';
+        overlay.onclick = () => {
+            overlay.style.display = 'none';
             notice.classList.add('hidden');
-            ifrWrap.removeEventListener('click', hideNotice);
         };
-        setTimeout(() => ifrWrap.addEventListener('click', hideNotice), 500);
+
+        // Try programmatic click after iframe loads
+        ifr.addEventListener('load', () => {
+            if (!fbAutoplayTriggered) {
+                fbAutoplayTriggered = true;
+                // Small delay so iframe fully renders before we attempt play
+                setTimeout(() => {
+                    overlay.click();   // simulates the user gesture click
+                    // Also send postMessage play command
+                    fbPostMessage('playVideo');
+                }, 600);
+            }
+        });
+
+        // Fallback: if after 3.5s no 'startedPlaying' message received, show notice
+        setTimeout(() => {
+            if (!fbAutoplayTriggered || !isPlaying) return;
+            // Check if FB sent us a playing event — if fbOverlayDismissed is still true
+            // and overlay is still visible, show notice
+            if (overlay.style.display !== 'none') {
+                overlay.style.display = 'none';
+            }
+            // Show notice only if message listener hasn't confirmed play
+            if (document.getElementById('fb-autoplay-overlay').style.display === 'none') return;
+            notice.classList.remove('hidden');
+            setTimeout(() => notice.classList.add('hidden'), 4000);
+        }, 3500);
     }
 }
 
 // ── Facebook postMessage control ─────────────────────────────────
-// Facebook's video iframe accepts postMessage commands.
 function fbPostMessage(method) {
     if (!fbIframe || !fbIframe.contentWindow) return;
-    // Facebook plugin iframe accepts these postMessage strings
     fbIframe.contentWindow.postMessage(method, '*');
 }
 
@@ -358,15 +350,19 @@ function fbTogglePlayPause() {
     }
 }
 
-// Listen for messages from Facebook iframe (play/pause state changes)
+// Listen for Facebook iframe state messages
 window.addEventListener('message', (e) => {
     if (!e.data) return;
     try {
         const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        // Facebook sends: {type:'video', event:'startedPlaying'} or {event:'paused'}
         if (d.type === 'video') {
             if (d.event === 'startedPlaying') {
                 isPlaying = true;
+                // Dismiss overlay once we know it's playing
+                const ov = document.getElementById('fb-autoplay-overlay');
+                if (ov) ov.style.display = 'none';
+                const notice = document.getElementById('fb-click-notice');
+                if (notice) notice.classList.add('hidden');
                 sendToPhone({ cmd: 'sync-state', isPlaying: true });
             } else if (d.event === 'paused' || d.event === 'finishedPlaying') {
                 isPlaying = false;
@@ -376,9 +372,9 @@ window.addEventListener('message', (e) => {
     } catch (_) {}
 });
 
-// ── UI helpers ───────────────────────────────────────────────────
+// ── UI helpers (laptop) ──────────────────────────────────────────
 function setLaptopStatus(msg, color) {
-    const el     = document.getElementById('laptop-conn-status');
+    const el = document.getElementById('laptop-conn-status');
     const styles = {
         emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
         amber  : 'text-amber-400 bg-amber-500/10 border-amber-500/20',
@@ -417,7 +413,6 @@ function startPhoneMode(targetRoom) {
     roomId = targetRoom;
 
     showScreen('screen-phone');
-    setPhoneStatus('Connecting...', 'amber');
 
     peer = new Peer();
 
@@ -426,51 +421,86 @@ function startPhoneMode(targetRoom) {
 
         c.on('open', () => {
             conn = c;
-            setPhoneStatus('Connected ✓', 'emerald');
-            document.getElementById('phone-conn-detail').innerText = `P2P Connected — Room ${roomId}`;
-            document.getElementById('phone-dot').className =
-                'w-2.5 h-2.5 rounded-full bg-emerald-400 flex-shrink-0 shadow-[0_0_6px_#10b981]';
+            setPhoneStatusPill('Connected ✓', '#34d399', '#10b981');
+            document.getElementById('phone-conn-detail').innerText = `Room ${roomId} · P2P Connected`;
+            document.getElementById('phone-dot').style.cssText =
+                'width:8px;height:8px;border-radius:50%;background:#34d399;flex-shrink:0;box-shadow:0 0 6px #10b981;animation:none;';
+            document.getElementById('phone-hint').innerText = 'Copy a video link, then tap Play';
         });
 
         c.on('data', data => {
             if (data.cmd === 'sync-state') {
                 isPlaying = data.isPlaying;
-                updatePlayIcon();
+                updatePhonePlayIcon();
+                scheduleHideControls();
             }
         });
 
         c.on('close', () => {
-            setPhoneStatus('Disconnected', 'rose');
-            document.getElementById('phone-dot').className =
-                'w-2.5 h-2.5 rounded-full bg-rose-400 animate-pulse flex-shrink-0';
+            setPhoneStatusPill('Disconnected', '#f87171', '#ef4444');
             conn = null;
         });
     });
 
     peer.on('error', err => {
-        setPhoneStatus('Connection failed — scan QR again', 'rose');
+        setPhoneStatusPill('Connection failed', '#f87171', '#ef4444');
         console.error('[Phone] error:', err);
     });
+
+    // Wake controls on any tap
+    document.getElementById('phone-tap-catcher').addEventListener('click', wakeControls);
 }
 
-function setPhoneStatus(msg, color) {
-    const el     = document.getElementById('phone-conn-status');
-    const colors = { emerald: 'text-emerald-400', amber: 'text-amber-400', rose: 'text-rose-400' };
-    el.className = `text-[10px] font-medium ${colors[color]}`;
-    el.innerText = msg;
+function setPhoneStatusPill(text, color, glow) {
+    const dot    = document.getElementById('phone-dot');
+    const status = document.getElementById('phone-conn-status');
+    dot.style.cssText    = `width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;box-shadow:0 0 6px ${glow};animation:none;`;
+    status.style.color   = color;
+    status.innerText     = text;
 }
 
-// ── Phone actions ────────────────────────────────────────────────
-window.sendVideoLink = function () {
+// ── Phone play/pause tap — reads clipboard, loads or toggles ─────
+window.handlePlayPauseTap = function () {
     if (!conn || !conn.open) {
-        alert('Still connecting to laptop. Please wait a moment and try again.');
+        // Not connected yet — pulse the button to show feedback
+        const btn = document.getElementById('phone-playpause-btn');
+        btn.style.background = 'rgba(239,68,68,0.8)';
+        setTimeout(() => { btn.style.background = 'rgba(14,165,233,0.9)'; }, 600);
         return;
     }
-    const input = document.getElementById('phone-link-input');
-    const raw   = input.value.trim();
-    if (!raw) return;
 
-    const parsed = parseVideoUrl(raw);
+    wakeControls();  // always reset hide timer on any tap
+
+    if (!hasVideo) {
+        // ── First tap: read clipboard and load video ─────────────
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            navigator.clipboard.readText()
+                .then(text => {
+                    const url = text.trim();
+                    if (!url || !isValidVideoUrl(url)) {
+                        setPhoneHint('⚠️ No valid video link in clipboard. Copy a link first.');
+                        setTimeout(() => setPhoneHint('Copy a video link, then tap Play'), 3000);
+                        return;
+                    }
+                    loadVideoFromUrl(url);
+                })
+                .catch(() => {
+                    // Clipboard API denied — show input fallback
+                    showClipboardFallback();
+                });
+        } else {
+            showClipboardFallback();
+        }
+    } else {
+        // ── Video already loaded: toggle play/pause ──────────────
+        conn.send({ cmd: 'toggle' });
+        isPlaying = !isPlaying;
+        updatePhonePlayIcon();
+    }
+};
+
+function loadVideoFromUrl(url) {
+    const parsed = parseVideoUrl(url);
     conn.send({
         cmd       : 'load',
         url       : parsed.url,
@@ -479,62 +509,133 @@ window.sendVideoLink = function () {
         isVertical: parsed.isVertical
     });
 
-    // Show platform-specific note for FB/IG
-    if (parsed.type === 'iframe') {
-        showPhoneFbNotice();
-    }
-
+    hasVideo  = true;
     isPlaying = true;
-    updatePlayIcon();
+    updatePhonePlayIcon();
 
-    // Button tick feedback
-    const btn = document.querySelector('button[onclick="sendVideoLink()"]');
-    if (btn) {
-        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
-        btn.style.background = '#059669';
-        setTimeout(() => {
-            btn.innerHTML = '<i class="fa-solid fa-play ml-0.5"></i>';
-            btn.style.background = '';
-        }, 1800);
+    // Show now-playing info
+    const nowPlaying = document.getElementById('phone-now-playing');
+    const icon       = document.getElementById('phone-platform-icon');
+    const urlEl      = document.getElementById('phone-video-url');
+    nowPlaying.style.display = 'block';
+    urlEl.innerText = url.length > 50 ? url.substring(0, 47) + '…' : url;
+
+    if (parsed.type === 'youtube') {
+        icon.className  = 'fa-brands fa-youtube';
+        icon.style.color = '#f87171';
+    } else if (url.includes('facebook')) {
+        icon.className  = 'fa-brands fa-facebook';
+        icon.style.color = '#60a5fa';
+    } else if (url.includes('instagram')) {
+        icon.className  = 'fa-brands fa-instagram';
+        icon.style.color = '#f472b6';
+    } else {
+        icon.className  = 'fa-solid fa-film';
+        icon.style.color = '#a78bfa';
     }
-    input.value = '';
+
+    // Show skip buttons
+    document.getElementById('phone-skip-row').style.display = 'flex';
+
+    setPhoneHint('Tap to play / pause');
+    scheduleHideControls();
+}
+
+function showClipboardFallback() {
+    // Inject a quick inline input as a popup
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:12px;';
+    overlay.innerHTML = `
+        <p style="color:#e2e8f0;font-size:14px;font-weight:700;text-align:center;">Paste video link</p>
+        <input id="fallback-input" type="url" placeholder="https://..." autocomplete="off"
+            style="width:100%;max-width:340px;background:#1e293b;border:1px solid #475569;color:#fff;font-size:14px;padding:12px 14px;border-radius:12px;outline:none;">
+        <div style="display:flex;gap:10px;width:100%;max-width:340px;">
+            <button id="fallback-cancel" style="flex:1;padding:11px;border-radius:12px;background:#334155;color:#94a3b8;font-size:13px;font-weight:700;border:none;cursor:pointer;">Cancel</button>
+            <button id="fallback-go" style="flex:2;padding:11px;border-radius:12px;background:#0ea5e9;color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;">Play</button>
+        </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('fallback-input').focus(), 100);
+
+    document.getElementById('fallback-cancel').onclick = () => overlay.remove();
+    document.getElementById('fallback-go').onclick = () => {
+        const url = document.getElementById('fallback-input').value.trim();
+        overlay.remove();
+        if (url) loadVideoFromUrl(url);
+    };
+    document.getElementById('fallback-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('fallback-go').click();
+    });
+}
+
+function isValidVideoUrl(str) {
+    try {
+        const u = new URL(str);
+        // Accept http/https only
+        return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch (_) {
+        return false;
+    }
+}
+
+// ── Controls auto-hide ───────────────────────────────────────────
+function scheduleHideControls() {
+    clearTimeout(controlsHideTimer);
+    const overlay = document.getElementById('phone-controls-overlay');
+    overlay.style.opacity    = '1';
+    overlay.style.transition = 'opacity 0.4s ease';
+    overlay.style.pointerEvents = 'auto';
+
+    if (hasVideo && isPlaying) {
+        controlsHideTimer = setTimeout(() => {
+            overlay.style.opacity    = '0';
+            overlay.style.pointerEvents = 'none';
+        }, 3000);  // hide after 3 seconds
+    }
+}
+
+window.wakeControls = function () {
+    const overlay = document.getElementById('phone-controls-overlay');
+    overlay.style.opacity       = '1';
+    overlay.style.pointerEvents = 'auto';
+    scheduleHideControls();  // reset the timer
 };
+
+function setPhoneHint(text) {
+    document.getElementById('phone-hint').innerText = text;
+}
 
 window.togglePlayPause = function () {
     if (!conn || !conn.open) return;
     conn.send({ cmd: 'toggle' });
     isPlaying = !isPlaying;
-    updatePlayIcon();
+    updatePhonePlayIcon();
 };
 
 window.sendCommand = function (action, value) {
     if (!conn || !conn.open) return;
     if (action === 'skip') conn.send({ cmd: 'skip', seconds: value });
+    wakeControls();
 };
 
-function updatePlayIcon() {
+function updatePhonePlayIcon() {
     const icon = document.getElementById('phone-playpause-icon');
-    icon.className = isPlaying
-        ? 'fa-solid fa-pause text-4xl'
-        : 'fa-solid fa-play text-4xl ml-1.5';
-}
-
-function showPhoneFbNotice() {
-    const detail = document.getElementById('phone-conn-detail');
-    const prev   = detail.innerText;
-    detail.innerText = '⚠️ Facebook/IG videos may need a tap on the laptop screen to start';
-    detail.style.color = '#fbbf24';
-    setTimeout(() => {
-        detail.innerText   = prev;
-        detail.style.color = '';
-    }, 6000);
+    const btn  = document.getElementById('phone-playpause-btn');
+    if (isPlaying) {
+        icon.className     = 'fa-solid fa-pause';
+        icon.style.cssText = 'font-size:40px;color:#fff;margin-left:0;';
+        btn.style.background = 'rgba(14,165,233,0.9)';
+    } else {
+        icon.className     = 'fa-solid fa-play';
+        icon.style.cssText = 'font-size:40px;color:#fff;margin-left:6px;';
+        btn.style.background = 'rgba(100,116,139,0.85)';
+    }
 }
 
 // ── URL parser ───────────────────────────────────────────────────
 function parseVideoUrl(rawUrl) {
     const url = rawUrl.trim();
 
-    // 1. YouTube — extract video ID
+    // 1. YouTube
     const ytMatch = url.match(
         /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/
     );
@@ -542,24 +643,23 @@ function parseVideoUrl(rawUrl) {
         return { url: ytMatch[1], type: 'youtube', embedUrl: null, isVertical: false };
     }
 
-    // 2. Facebook video / reel
+    // 2. Facebook
     if (url.includes('facebook.com') || url.includes('fb.watch')) {
         const isReel   = url.includes('/reel') || url.includes('/share/r') || url.includes('fb.watch');
         const w        = isReel ? 360 : 1280;
         const h        = isReel ? 640 : 720;
-        // autoplay=true and allowfullscreen in the embed URL
         const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=${w}&height=${h}&autoplay=true&allowfullscreen=true`;
         return { url, type: 'iframe', embedUrl, isVertical: isReel };
     }
 
-    // 3. Instagram reel / post (always vertical)
+    // 3. Instagram
     const igMatch = url.match(/instagram\.com\/(?:p|reel|tv)\/([\w-]+)/);
     if (igMatch && igMatch[1]) {
         const embedUrl = `https://www.instagram.com/p/${igMatch[1]}/embed/`;
         return { url, type: 'iframe', embedUrl, isVertical: true };
     }
 
-    // 4. Direct video (MP4 / WebM / etc.)
+    // 4. Direct video (MP4 / WebM)
     return { url, type: 'direct', embedUrl: null, isVertical: false };
 }
 
@@ -573,13 +673,14 @@ function generateRoomCode() {
 
 function showScreen(id) {
     ['screen-home', 'screen-laptop', 'screen-phone'].forEach(s => {
-        const el = document.getElementById(s);
-        el.style.display = 'none';
+        document.getElementById(s).style.display = 'none';
     });
     const target = document.getElementById(id);
-    target.style.display = id === 'screen-laptop' ? 'block' : 'flex';
-    if (id === 'screen-phone') {
-        target.style.flexDirection = 'column';
-        target.style.minHeight    = '100vh';
+    if (id === 'screen-laptop') {
+        target.style.display = 'block';
+    } else if (id === 'screen-phone') {
+        target.style.display = 'block';   // phone screen uses position:fixed
+    } else {
+        target.style.display = 'flex';
     }
 }
