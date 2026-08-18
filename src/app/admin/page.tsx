@@ -433,12 +433,15 @@ function AdminDashboardContent() {
  const handleCreateUser = async () => {
  setLoading(true);
  try {
- // Guaranteed-unique username: name prefix + random hex suffix
- const _np = (editingUser?.full_name || "u").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
- const _uid = typeof crypto !== "undefined" ? crypto.randomUUID().replace(/-/g,"").slice(0,8) : (Date.now().toString(36) + Math.random().toString(36).slice(2,5));
- // Only use admin-typed username if it was actually filled in; never inherit from previous student
- const autoUsername = (editingUser?.username && editingUser.username.trim().length > 0) ? editingUser.username.trim() : (_np + _uid);
- const autoRollId = (editingUser?.roll_id && editingUser.roll_id.trim().length > 0) ? editingUser.roll_id.trim() : ("STU-" + Date.now().toString(36) + _uid);
+ // Username: use admin-typed value if provided, otherwise null (DB allows nulls for username)
+ // NULL never violates UNIQUE constraints in PostgreSQL — safest approach
+ const autoUsername = (editingUser?.username && editingUser.username.trim().length > 0)
+   ? editingUser.username.trim()
+   : null;
+ // Roll ID: use admin-typed value, or generate unique one with timestamp+random
+ const autoRollId = (editingUser?.roll_id && editingUser.roll_id.trim().length > 0)
+   ? editingUser.roll_id.trim()
+   : ("STU-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
  const newStudent = {
    full_name: editingUser?.full_name || "",
    roll_id: autoRollId,
