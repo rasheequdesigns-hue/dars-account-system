@@ -18,6 +18,29 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/*
+          Inline script runs BEFORE first paint — reads localStorage and applies
+          the "dark" class immediately so there is zero flash of wrong theme.
+          This is the standard pattern for class-based dark mode with SSR.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('sm_theme');
+                  if (saved === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className={`${inter.className} min-h-screen antialiased`}>
         <ThemeProvider>
           <MobileNavigation />

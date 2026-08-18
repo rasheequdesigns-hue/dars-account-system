@@ -19,25 +19,31 @@ export function useTheme() {
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  // Read initial theme from the DOM (set by the inline <script> in layout.tsx)
+  // so React state matches what's already on screen — no flicker, no mismatch.
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof document !== "undefined") {
+      return document.documentElement.classList.contains("dark") ? "dark" : "light";
+    }
+    return "light";
+  });
 
-  // On mount: only restore explicitly saved preference. Never auto-dark from system.
+  // Sync React state with localStorage on first mount (handles SSR → client handoff)
   useEffect(() => {
     const saved = localStorage.getItem("sm_theme") as Theme | null;
-    if (saved === "dark") {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    } else {
-      // Default is always light unless user explicitly chose dark
-      setTheme("light");
-      document.documentElement.classList.remove("dark");
-    }
+    const current = document.documentElement.classList.contains("dark") ? "dark" : "light";
+    // Trust the DOM (set by the blocking script) — just align React state with it
+    setTheme(current);
   }, []);
 
   const toggleTheme = () => {
     const next: Theme = theme === "light" ? "dark" : "light";
     setTheme(next);
-    document.documentElement.classList.toggle("dark", next === "dark");
+    if (next === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     localStorage.setItem("sm_theme", next);
   };
 

@@ -1,10 +1,21 @@
 @import "tailwindcss";
 
+/* ── Base ────────────────────────────────────────────────────────────────── */
+body {
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  background-color: #F0F2F9;
+  color: #0f172a;
+}
+
+/* Smooth theme transition */
+html  { transition: background-color 0.15s ease; }
+body  { transition: background-color 0.15s ease, color 0.15s ease; }
+*, *::before, *::after { transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease; }
+
 /* ── Scrollbar hiding ─────────────────────────────────────────────────────── */
 * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
 *::-webkit-scrollbar { display: none !important; }
-html, body { overflow-y: auto; scrollbar-width: none !important; }
-html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }
+html, body { overflow-y: auto; }
 .overflow-y-auto, .overflow-auto, .custom-scroll {
   scrollbar-width: none !important; -ms-overflow-style: none !important;
 }
@@ -12,56 +23,63 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }
 .overflow-auto::-webkit-scrollbar,
 .custom-scroll::-webkit-scrollbar { display: none !important; }
 
-body { font-family: Inter, Arial, Helvetica, sans-serif; }
-
 /* ─────────────────────────────────────────────────────────────────────────── */
-/*  DARK MODE  — toggled by adding class="dark" to <html>                     */
+/*  DARK MODE — only active when <html class="dark"> is set                   */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-/* Page backgrounds */
-.dark body                        { background-color: #0f1117 !important; }
-.dark .bg-white                   { background-color: #1a1d27 !important; }
-.dark .bg-\[\#F0F2F9\]            { background-color: #252836 !important; }
-.dark .bg-\[\#E8E5FF\]            { background-color: #2a2640 !important; }
-.dark .bg-\[\#F4F0FF\]            { background-color: #22203a !important; }
-.dark .bg-\[\#eef2f6\]            { background-color: #0f1117 !important; }
-.dark .bg-\[\#f3e8ff\]            { background-color: #1e1a35 !important; }
-.dark .bg-slate-50                { background-color: #1e2131 !important; }
-.dark .bg-slate-100               { background-color: #252836 !important; }
-.dark .bg-\[\#F0F2F9\]\/40        { background-color: rgba(37,40,54,0.4) !important; }
+/* Page / body */
+html.dark body                     { background-color: #0f1117; color: #f1f5f9; }
+
+/* Card backgrounds */
+html.dark .bg-white                { background-color: #1a1d27 !important; }
+html.dark .bg-\[\#F0F2F9\]         { background-color: #252836 !important; }
+html.dark .bg-\[\#E8E5FF\]         { background-color: #2a2640 !important; }
+html.dark .bg-\[\#F4F0FF\]         { background-color: #22203a !important; }
+html.dark .bg-\[\#eef2f6\]         { background-color: #0f1117 !important; }
+html.dark .bg-\[\#f3e8ff\]         { background-color: #1e1a35 !important; }
+html.dark .bg-\[\#f8f9fc\]         { background-color: #1e2131 !important; }
+html.dark .bg-slate-50             { background-color: #1e2131 !important; }
+html.dark .bg-slate-100            { background-color: #252836 !important; }
+html.dark .bg-\[\#F0F2F9\]\/40     { background-color: rgba(37,40,54,0.4) !important; }
 
 /* Borders */
-.dark .border-\[\#E8E5FF\]        { border-color: #2e3148 !important; }
-.dark .border-slate-200           { border-color: #2e3148 !important; }
-.dark .divide-\[\#E8E5FF\] > *    { border-color: #2e3148 !important; }
+html.dark .border-\[\#E8E5FF\]     { border-color: #2e3148 !important; }
+html.dark .border-slate-200        { border-color: #2e3148 !important; }
+html.dark .divide-\[\#E8E5FF\] > * { border-color: #2e3148 !important; }
+html.dark .divide-slate-200 > *    { border-color: #2e3148 !important; }
 
 /* Text */
-.dark .text-slate-900             { color: #f1f5f9 !important; }
-.dark .text-slate-800             { color: #e2e8f0 !important; }
-.dark .text-slate-700             { color: #cbd5e1 !important; }
-.dark .text-slate-600             { color: #94a3b8 !important; }
-.dark .text-slate-500             { color: #64748b !important; }
-.dark .text-slate-400             { color: #475569 !important; }
+html.dark .text-slate-900          { color: #f1f5f9 !important; }
+html.dark .text-slate-800          { color: #e2e8f0 !important; }
+html.dark .text-slate-700          { color: #cbd5e1 !important; }
+html.dark .text-slate-600          { color: #94a3b8 !important; }
+html.dark .text-slate-500          { color: #64748b !important; }
+html.dark .text-slate-400          { color: #475569 !important; }
 
-/* Inputs & textareas */
-.dark input, .dark textarea, .dark select {
+/* Inputs, textareas, selects */
+html.dark input,
+html.dark textarea,
+html.dark select {
   background-color: #252836 !important;
   color: #f1f5f9 !important;
   border-color: #2e3148 !important;
 }
-.dark input::placeholder, .dark textarea::placeholder { color: #475569 !important; }
+html.dark input::placeholder,
+html.dark textarea::placeholder    { color: #475569 !important; }
 
-/* Shadow overrides (soften in dark) */
-.dark .shadow-\[0_10px_25px_rgba\(90\2c 69\2c 255\2c 0\.08\)\],
-.dark .shadow-\[0_4px_16px_rgba\(90\2c 69\2c 255\2c 0\.08\)\] {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+/* Hover overrides */
+html.dark .hover\:bg-\[\#F4F0FF\]:hover { background-color: #22203a !important; }
+html.dark .hover\:bg-\[\#E8E5FF\]:hover { background-color: #2a2640 !important; }
+html.dark .hover\:bg-\[\#F0F2F9\]:hover { background-color: #252836 !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  LIGHT MODE explicit resets (ensure switching back from dark is clean)     */
+/* ─────────────────────────────────────────────────────────────────────────── */
+html:not(.dark) body               { background-color: #F0F2F9; color: #0f172a; }
+html:not(.dark) input,
+html:not(.dark) textarea,
+html:not(.dark) select             {
+  background-color: inherit;
+  color: inherit;
+  border-color: inherit;
 }
-
-/* Hover states */
-.dark .hover\:bg-\[\#F4F0FF\]:hover { background-color: #22203a !important; }
-.dark .hover\:bg-\[\#E8E5FF\]:hover { background-color: #2a2640 !important; }
-.dark .hover\:bg-\[\#F0F2F9\]:hover { background-color: #252836 !important; }
-
-/* Smooth transitions for dark toggle */
-html { transition: background-color 0.2s ease; }
-body { transition: background-color 0.2s ease, color 0.2s ease; }
