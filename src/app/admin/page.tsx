@@ -438,7 +438,7 @@ function AdminDashboardContent() {
  const _uid = typeof crypto !== "undefined" ? crypto.randomUUID().replace(/-/g,"").slice(0,8) : (Date.now().toString(36) + Math.random().toString(36).slice(2,5));
  // Only use admin-typed username if it was actually filled in; never inherit from previous student
  const autoUsername = (editingUser?.username && editingUser.username.trim().length > 0) ? editingUser.username.trim() : (_np + _uid);
- const autoRollId = (editingUser?.roll_id && editingUser.roll_id.trim().length > 0) ? editingUser.roll_id.trim() : ("STU-" + Date.now() + _uid);
+ const autoRollId = (editingUser?.roll_id && editingUser.roll_id.trim().length > 0) ? editingUser.roll_id.trim() : ("STU-" + Date.now().toString(36) + _uid);
  const newStudent = {
    full_name: editingUser?.full_name || "",
    roll_id: autoRollId,
@@ -452,10 +452,13 @@ function AdminDashboardContent() {
    is_responsible: editingUser?.is_responsible || false,
  };
  if (editingUser?.id) await supabase.from("students").update(newStudent).eq("id", editingUser.id);
- else await supabase.from("students").insert([newStudent]);
+ else {
+   const { error: insertError } = await supabase.from("students").insert([newStudent]);
+   if (insertError) throw new Error(insertError.message + (insertError.details ? " | " + insertError.details : "") + (insertError.hint ? " | Hint: " + insertError.hint : ""));
+ }
  setShowUserModal(false); setEditingUser(null); refreshData();
  alert("✅ Student account created successfully");
- } catch (err: any) { alert(`❌ Error: ${err.message}`); }
+ } catch (err: any) { alert(`❌ Error: ${err.message || err.details || err.code || JSON.stringify(err)}`); }
  finally { setLoading(false); }
  };
 
