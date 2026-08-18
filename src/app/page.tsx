@@ -78,8 +78,11 @@ export default function LoginPage() {
  setLoading(true);
  await new Promise(r => setTimeout(r, 600));
 
- // Admin hardcoded check
- if (username === "admin@account" && password === "adminac123") {
+ // Admin login: check saved credentials first, fall back to factory default
+ const _savedAdmin = (() => { try { return JSON.parse(localStorage.getItem("admin_session") || "{}"); } catch { return {}; } })();
+ const _adminUsername = _savedAdmin.username || "admin@account";
+ const _adminPassword = _savedAdmin.password || "adminac123";
+ if (username === _adminUsername && password === _adminPassword) {
  setSession({ email: username, role: "admin", name: "Master Admin" });
  router.push("/admin");
  return;

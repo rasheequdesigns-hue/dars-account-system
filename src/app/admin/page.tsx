@@ -445,8 +445,8 @@ function AdminDashboardContent() {
    grade: editingUser?.grade || "",
    balance: 0,
    parent_phone: editingUser?.parent_phone ? editingUser.parent_phone.replace(/\D/g, "").slice(-10) : null,
-   email_account: editingUser?.email_account || (autoUsername + "@account.com"),
-   email_library: editingUser?.email_library || (autoUsername + "@library.com"),
+   // email_account/email_library intentionally omitted — they have UNIQUE constraints
+   // that cause duplicate-key errors. They are not used for login.
    password: editingUser?.password || "password123",
    username: autoUsername,
    is_responsible: editingUser?.is_responsible || false,
@@ -562,7 +562,7 @@ function AdminDashboardContent() {
  try {
  if (!sd.full_name || !sd.roll_id) throw new Error(`Student ${i+1}: full_name and roll_id required`);
  const { data: existing } = await supabase.from("students").select("id").eq("roll_id", sd.roll_id).single();
- const payload = { full_name: sd.full_name, grade: sd.grade || null, parent_phone: sd.parent_phone || null, username: (sd.username && sd.username.trim()) ? sd.username.trim() : ((sd.full_name||"u").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8) + (typeof crypto!=="undefined"?crypto.randomUUID().replace(/-/g,"").slice(0,8):(Date.now().toString(36)+Math.random().toString(36).slice(2,5)))), password: sd.password || "default123", email_account: sd.email_account || `${sd.username || sd.roll_id}@account.com`, email_library: sd.email_library || `${sd.username || sd.roll_id}@library.com`, balance: sd.balance || 0, is_responsible: sd.is_responsible || false };
+ const payload = { full_name: sd.full_name, grade: sd.grade || null, parent_phone: sd.parent_phone ? String(sd.parent_phone).replace(/\D/g,"").slice(-10) : null, username: (sd.username && sd.username.trim()) ? sd.username.trim() : ((sd.full_name||"u").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8) + (typeof crypto!=="undefined"?crypto.randomUUID().replace(/-/g,"").slice(0,8):(Date.now().toString(36)+Math.random().toString(36).slice(2,5)))), password: sd.password || "default123", balance: sd.balance || 0, is_responsible: sd.is_responsible || false };
  if (existing) { const { error } = await supabase.from("students").update(payload).eq("roll_id", sd.roll_id); if (error) throw error; }
  else { const { error } = await supabase.from("students").insert([{ ...payload, roll_id: sd.roll_id }]); if (error) throw error; }
  successCount++;
@@ -602,9 +602,9 @@ function AdminDashboardContent() {
  const totalBalance = students.reduce((a, s) => a + (s.balance || 0), 0);
  const avgBalance = students.length > 0 ? totalBalance / students.length : 0;
  return (
- <div className="flex flex-col gap-5 pb-24">
+ <div className="pb-24">
  {/* Stats always first */}
- <div className="order-1">{/* stat cards wrapper */}
+ <div className="mb-5">{/* stat cards */}
  <div className="grid grid-cols-3 gap-3">
  <div className="bg-white rounded-2xl p-4 shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] ">
  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Total Balance</p>
@@ -624,8 +624,10 @@ function AdminDashboardContent() {
  </div>
  </div>
 
- {/* ── SECTION 1: SINGLE ENTRY AUDIT — mobile order 3, desktop order 2 ── */}
- <div className="order-3 sm:order-2 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+
+ {/* ── SECTION 1: SINGLE ENTRY AUDIT ── */}
+ <div className="lg:row-start-1 lg:col-start-2 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
  <div className="flex items-center gap-3 p-4 border-b border-[#E8E5FF]">
  <div className="w-8 h-8 rounded-xl bg-[#E8E5FF] flex items-center justify-center flex-shrink-0">
  <FileText className="w-4 h-4 text-[#5A45FF]" />
@@ -708,8 +710,8 @@ function AdminDashboardContent() {
  </div>
  </div>
 
- {/* ── SECTION 2: BULK AUTO SPLIT — mobile order 2, desktop order 3 ── */}
- <div className="order-2 sm:order-3 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
+ {/* ── SECTION 2: BULK AUTO SPLIT ── */}
+ <div className="lg:row-start-1 lg:col-start-1 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
  <div className="flex items-center gap-3 p-4 border-b border-[#E8E5FF]">
  <div className="w-8 h-8 rounded-xl bg-[#E8E5FF] flex items-center justify-center flex-shrink-0">
  <Calculator className="w-4 h-4 text-[#5A45FF]" />
@@ -798,8 +800,8 @@ function AdminDashboardContent() {
  </div>
  </div>
 
- {/* ── SECTION 3: ACTIVE PERSONNEL GROUPS — order 4 both ── */}
- <div className="order-4 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
+ {/* ── SECTION 3: ACTIVE PERSONNEL GROUPS ── */}
+ <div className="lg:row-start-2 lg:col-start-1 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
  <div className="flex items-center justify-between p-4 border-b border-[#E8E5FF]">
  <div className="flex items-center gap-3">
  <div className="w-8 h-8 rounded-xl bg-[#E8E5FF] flex items-center justify-center">
@@ -836,8 +838,8 @@ function AdminDashboardContent() {
  )}
  </div>
 
- {/* ── SECTION 4: SELECTIVE BULK ADD — order 5 both ── */}
- <div className="order-5 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
+ {/* ── SECTION 4: SELECTIVE BULK ADD ── */}
+ <div className="lg:col-span-2 bg-white rounded-2xl shadow-[0_4px_16px_rgba(90,69,255,0.08)] border border-[#E8E5FF] overflow-hidden">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-[#E8E5FF]">
  <div className="flex items-center gap-3">
  <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -919,6 +921,8 @@ function AdminDashboardContent() {
  )}
  </div>
  </div>
+
+ </div>{/* end sections grid */}
 
  </div>
  );
