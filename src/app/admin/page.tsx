@@ -423,15 +423,22 @@ function AdminDashboardContent() {
  const handleCreateUser = async () => {
  setLoading(true);
  try {
+ // Build unique username: strip non-alphanumeric from full name + 4-digit random suffix
+ const nameParts = (editingUser?.full_name || "user").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+ const suffix = Math.floor(1000 + Math.random() * 9000);
+ const autoUsername = editingUser?.username || (nameParts + suffix);
+ const autoRollId = editingUser?.roll_id || ("STU-" + Date.now());
  const newStudent = {
- full_name: editingUser?.full_name || "", roll_id: editingUser?.roll_id || `STU-${Date.now()}`,
- grade: editingUser?.grade || "", balance: 0,
- parent_phone: editingUser?.parent_phone ? editingUser.parent_phone.replace(/\D/g, "").slice(-10) : null,
- email_account: editingUser?.email_account || `${editingUser?.username || "user"}@account.com`,
- email_library: editingUser?.email_library || `${editingUser?.username || "user"}@library.com`,
- password: editingUser?.password || "password123",
- username: editingUser?.username || editingUser?.full_name?.toLowerCase().split(" ")[0] || `user${Math.floor(Math.random()*1000)}`,
- is_responsible: editingUser?.is_responsible || false,
+   full_name: editingUser?.full_name || "",
+   roll_id: autoRollId,
+   grade: editingUser?.grade || "",
+   balance: 0,
+   parent_phone: editingUser?.parent_phone ? editingUser.parent_phone.replace(/\D/g, "").slice(-10) : null,
+   email_account: editingUser?.email_account || (autoUsername + "@account.com"),
+   email_library: editingUser?.email_library || (autoUsername + "@library.com"),
+   password: editingUser?.password || "password123",
+   username: autoUsername,
+   is_responsible: editingUser?.is_responsible || false,
  };
  if (editingUser?.id) await supabase.from("students").update(newStudent).eq("id", editingUser.id);
  else await supabase.from("students").insert([newStudent]);
