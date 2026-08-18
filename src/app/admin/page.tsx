@@ -424,11 +424,12 @@ function AdminDashboardContent() {
  const handleCreateUser = async () => {
  setLoading(true);
  try {
- // Build unique username: strip non-alphanumeric from full name + 4-digit random suffix
- const nameParts = (editingUser?.full_name || "user").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
- const suffix = Math.floor(1000 + Math.random() * 9000);
- const autoUsername = editingUser?.username || (nameParts + suffix);
- const autoRollId = editingUser?.roll_id || ("STU-" + Date.now());
+ // Guaranteed-unique username: name prefix + random hex suffix
+ const _np = (editingUser?.full_name || "u").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+ const _uid = typeof crypto !== "undefined" ? crypto.randomUUID().replace(/-/g,"").slice(0,8) : (Date.now().toString(36) + Math.random().toString(36).slice(2,5));
+ // Only use admin-typed username if it was actually filled in; never inherit from previous student
+ const autoUsername = (editingUser?.username && editingUser.username.trim().length > 0) ? editingUser.username.trim() : (_np + _uid);
+ const autoRollId = (editingUser?.roll_id && editingUser.roll_id.trim().length > 0) ? editingUser.roll_id.trim() : ("STU-" + Date.now() + _uid);
  const newStudent = {
    full_name: editingUser?.full_name || "",
    roll_id: autoRollId,
@@ -549,7 +550,7 @@ function AdminDashboardContent() {
  try {
  if (!sd.full_name || !sd.roll_id) throw new Error(`Student ${i+1}: full_name and roll_id required`);
  const { data: existing } = await supabase.from("students").select("id").eq("roll_id", sd.roll_id).single();
- const payload = { full_name: sd.full_name, grade: sd.grade || null, parent_phone: sd.parent_phone || null, username: sd.username || sd.roll_id, password: sd.password || "default123", email_account: sd.email_account || `${sd.username || sd.roll_id}@account.com`, email_library: sd.email_library || `${sd.username || sd.roll_id}@library.com`, balance: sd.balance || 0, is_responsible: sd.is_responsible || false };
+ const payload = { full_name: sd.full_name, grade: sd.grade || null, parent_phone: sd.parent_phone || null, username: (sd.username && sd.username.trim()) ? sd.username.trim() : ((sd.full_name||"u").toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8) + (typeof crypto!=="undefined"?crypto.randomUUID().replace(/-/g,"").slice(0,8):(Date.now().toString(36)+Math.random().toString(36).slice(2,5)))), password: sd.password || "default123", email_account: sd.email_account || `${sd.username || sd.roll_id}@account.com`, email_library: sd.email_library || `${sd.username || sd.roll_id}@library.com`, balance: sd.balance || 0, is_responsible: sd.is_responsible || false };
  if (existing) { const { error } = await supabase.from("students").update(payload).eq("roll_id", sd.roll_id); if (error) throw error; }
  else { const { error } = await supabase.from("students").insert([{ ...payload, roll_id: sd.roll_id }]); if (error) throw error; }
  successCount++;
