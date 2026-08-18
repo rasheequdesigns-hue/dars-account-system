@@ -64,6 +64,7 @@ function AdminDashboardContent() {
  const [ledgerParty, setLedgerParty] = useState("");
  const [ledgerType, setLedgerType] = useState<"Income" | "Expense">("Income");
  const [ledgerValue, setLedgerValue] = useState("");
+ const [ledgerDate, setLedgerDate] = useState(new Date().toISOString().split('T')[0]);
  const [financeStartDate, setFinanceStartDate] = useState("");
  const [financeEndDate, setFinanceEndDate] = useState("");
 
@@ -279,8 +280,8 @@ function AdminDashboardContent() {
  setLoading(true);
  try {
  const actualAmt = ledgerType === "Income" ? amt : -amt;
- await supabase.from("school_finances").insert([{ description: ledgerPurpose, party_name: ledgerParty, amount: actualAmt, type: ledgerType.toLowerCase() }]);
- setLedgerPurpose(""); setLedgerParty(""); setLedgerValue("");
+ await supabase.from("school_finances").insert([{ description: ledgerPurpose, party_name: ledgerParty, amount: actualAmt, type: ledgerType.toLowerCase(), created_at: ledgerDate ? new Date(ledgerDate).toISOString() : new Date().toISOString() }]);
+ setLedgerPurpose(""); setLedgerParty(""); setLedgerValue(""); setLedgerDate(new Date().toISOString().split("T")[0]);
  await refreshData();
  alert(`✅ ${ledgerType} logged: ₹${amt}`);
  } catch (err: any) { alert(err.message); }
@@ -1088,6 +1089,17 @@ function AdminDashboardContent() {
  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
  <input type="number" value={ledgerValue} onChange={(e) => setLedgerValue(e.target.value)} className="w-full pl-8 pr-4 py-3 bg-[#F0F2F9] border border-[#E8E5FF] rounded-xl text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-[#5A45FF]/30" placeholder="0.00" />
  </div>
+ </div>
+
+ <div>
+  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Transaction Date</label>
+  <input
+   type="date"
+   value={ledgerDate}
+   onChange={(e) => setLedgerDate(e.target.value)}
+   className="w-full px-4 py-3 bg-[#F0F2F9] border border-[#E8E5FF] rounded-xl text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#5A45FF]/30"
+  />
+  <p className="text-[10px] text-slate-400 mt-1 ml-1">Defaults to today — change for backdated entries</p>
  </div>
 
  <button onClick={handlePostLedger} disabled={loading || !ledgerPurpose || !ledgerValue} className="w-full py-3 bg-gradient-to-r from-[#5A45FF] to-[#6C5CE7] text-white rounded-xl font-bold text-sm shadow-[0_4px_14px_rgba(90,69,255,0.35)] hover:shadow-[0_4px_20px_rgba(90,69,255,0.5)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2">
