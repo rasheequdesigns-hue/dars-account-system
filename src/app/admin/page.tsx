@@ -288,6 +288,15 @@ function AdminDashboardContent() {
  finally { setLoading(false); }
  };
 
+ const handleDeleteLedgerEntry = async (id: string) => {
+ if (!confirm("Delete this ledger entry permanently?")) return;
+ try {
+ const { error } = await supabase.from("school_finances").delete().eq("id", id);
+ if (error) throw error;
+ await refreshData();
+ } catch (err: any) { alert("❌ Failed to delete: " + err.message); }
+ };
+
  const handleSelectiveBulkAdd = async () => {
  if (!selectiveAmount || selectedStudents.length === 0) return;
  setLoading(true);
@@ -1123,11 +1132,12 @@ function AdminDashboardContent() {
  </div>
 
  {/* Table Header */}
- <div className="grid grid-cols-[1fr_80px_90px_90px] px-5 py-3 bg-[#F0F2F9] border-b border-[#E8E5FF] text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+ <div className="grid grid-cols-[1fr_80px_90px_90px_40px] px-5 py-3 bg-[#F0F2F9] border-b border-[#E8E5FF] text-[10px] font-bold text-slate-500 uppercase tracking-wider">
  <span>Description</span>
  <span>Type</span>
  <span>Party</span>
  <span className="text-right">Amount</span>
+ <span></span>
  </div>
 
  <div className="flex-1 overflow-y-auto" style={{maxHeight: "560px"}}>
@@ -1137,7 +1147,7 @@ function AdminDashboardContent() {
  <p className="text-sm font-medium">No ledger entries yet</p>
  </div>
  ) : ledger.map((log, i) => (
- <div key={i} className={`grid grid-cols-[1fr_80px_90px_90px] px-5 py-3.5 border-b border-[#E8E5FF] hover:bg-[#F4F0FF] transition-colors ${i % 2 === 0 ? "bg-white" : "bg-[#F0F2F9]/40"}`}>
+ <div key={log.id || i} className={`grid grid-cols-[1fr_80px_90px_90px_40px] px-5 py-3.5 border-b border-[#E8E5FF] hover:bg-[#F4F0FF] transition-colors group/row ${i % 2 === 0 ? "bg-white" : "bg-[#F0F2F9]/40"}`}>
  <div className="min-w-0 pr-3">
  <p className="text-sm font-semibold text-slate-900 truncate">{log.description}</p>
  <p className="text-xs text-slate-400 mt-0.5">{new Date(log.created_at).toLocaleDateString()}</p>
@@ -1154,6 +1164,15 @@ function AdminDashboardContent() {
  <p className={`text-sm font-bold ${log.amount > 0 ? "text-emerald-600" : "text-[#FF7675]"}`}>
  {log.amount > 0 ? "+" : ""}₹{Math.abs(log.amount).toLocaleString()}
  </p>
+ </div>
+ <div className="flex items-center justify-center">
+ <button
+ onClick={() => handleDeleteLedgerEntry(log.id)}
+ className="p-1.5 text-slate-300 hover:text-[#FF7675] hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover/row:opacity-100"
+ title="Delete entry"
+ >
+ <Trash2 className="w-3.5 h-3.5" />
+ </button>
  </div>
  </div>
  ))}
