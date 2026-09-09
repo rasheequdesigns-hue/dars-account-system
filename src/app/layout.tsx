@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import MobileNavigation from "@/components/MobileNavigation";
 import ThemeProvider from "@/components/ThemeProvider";
+import { WalletModalProvider } from "@/components/WalletTransactionModal";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -55,10 +56,12 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-screen antialiased`}>
         <ThemeProvider>
-          <Suspense fallback={null}>
-            <MobileNavigation />
-          </Suspense>
-          <main>{children}</main>
+          <WalletModalProvider>
+            <Suspense fallback={null}>
+              <MobileNavigation />
+            </Suspense>
+            <main>{children}</main>
+          </WalletModalProvider>
         </ThemeProvider>
       </body>
     </html>

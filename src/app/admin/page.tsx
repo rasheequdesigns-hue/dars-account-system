@@ -14,17 +14,23 @@ import {
  ArrowUpRight, ArrowDownRight, RefreshCw, Mail, CheckCircle2, User,
  CreditCard, Upload, Download, Calendar, Zap, DollarSign, Eye, EyeOff,
  AlertTriangle, Database, FileText, BarChart3, Layers, Key,
- Landmark, Vault, GraduationCap, ClipboardList, UserCog, Moon, Sun
+ Landmark, Vault, GraduationCap, ClipboardList, UserCog, Moon, Sun, Copy, FileJson
 } from "lucide-react";
-import { downloadCSV, downloadPDF } from "@/lib/download-utils";
+import { downloadCSV, downloadPDF, downloadJSON, copyJSONToClipboard } from "@/lib/download-utils";
 import { useTheme } from "@/components/ThemeProvider";
+import { useWalletModal, type StudentObj } from "@/components/WalletTransactionModal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Student {
  id: string; full_name: string; roll_id: string; grade: string;
  balance: number; email_account?: string; email_library?: string;
  password?: string; rating?: number; is_responsible?: boolean;
- username?: string; last_password_change?: string;
+ username?: string; last_password_change?: string; created_at?: string;
+ phone?: string | null; phone_number?: string | null;
+ address?: string | null; dob?: string | null; gender?: string | null;
+ guardian_name?: string | null; guardian_contact?: string | null;
+ emergency_contact?: string | null;
+ [key: string]: unknown;
 }
 interface Group { id: string; name: string; student_ids: string[]; }
 
@@ -32,9 +38,23 @@ function AdminDashboardContent() {
  const router = useRouter();
  const searchParams = useSearchParams();
  const { theme, toggleTheme } = useTheme();
+ const { triggerFundAnimation } = useWalletModal();
  const [isMounted, setIsMounted] = useState(false);
  const [activeTab, setActiveTab] = useState("funds");
  const [loading, setLoading] = useState(false);
+
+ const getOfficerName = (): string => {
+  try {
+   const raw = localStorage.getItem("admin_session");
+   if (raw) {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && typeof parsed.username === "string" && parsed.username.length > 0) {
+     return parsed.username;
+    }
+   }
+  } catch { /* noop */ }
+  return "Admin Officer";
+ };
 
  // ─── Data State ───────────────────────────────────────────────────────────
  const [students, setStudents] = useState<Student[]>([]);
@@ -45,6 +65,8 @@ function AdminDashboardContent() {
  const [books, setBooks] = useState<any[]>([]);
  const [fonts, setFonts] = useState<any[]>([]);
  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
+ const [studentsJsonCopied, setStudentsJsonCopied] = useState(false);
+ const [studentJsonCopiedId, setStudentJsonCopiedId] = useState<string | null>(null);
 
  // ─── Funds Tab State ──────────────────────────────────────────────────────
  const [bulkAmount, setBulkAmount] = useState("");
@@ -246,16 +268,26 @@ function AdminDashboardContent() {
  if (!bulkAmount || splitTargetStudents.length === 0) return;
  setLoading(true);
  try {
- await Promise.all(splitTargetStudents.map(async (s) => {
- // Always fetch fresh balance to avoid stale read-modify-write
+ const results = await Promise.all(splitTargetStudents.map(async (s) => {
  const { data: fresh } = await supabase.from("students").select("balance").eq("id", s.id).single();
  const currentBalance = fresh?.balance ?? 0;
  const amt = bulkAction === "add" ? perHead : -perHead;
- await supabase.from("students").update({ balance: currentBalance + amt }).eq("id", s.id);
+ const newBalance = currentBalance + amt;
+ await supabase.from("students").update({ balance: newBalance }).eq("id", s.id);
  await supabase.from("fund_transactions").insert([{ student_id: s.id, amount: amt, type: bulkAction === "add" ? "distribution" : "withdrawal", description: bulkPurpose || `Bulk ${bulkAction === "add" ? "Add" : "Subtract"} – ₹${perHead.toFixed(2)}/student` }]);
+ return { id: s.id, full_name: s.full_name, roll_id: s.roll_id, grade: s.grade, amt, newBalance };
  }));
  setBulkAmount(""); setBulkPurpose(""); await refreshData();
- alert("✅ Bulk operation completed");
+ const last = results[results.length - 1];
+ if (last) {
+  triggerFundAnimation(
+   bulkAction === "add" ? "add" : "remove",
+   perHead,
+   (bulkPurpose || `Bulk ${bulkAction === "add" ? "Credit" : "Debit"}`) + ` (${splitTargetStudents.length} students, ₹${perHead.toFixed(2)}/head)`,
+   { name: last.full_name, id: last.roll_id, grade: last.grade, newBalance: last.newBalance },
+   { officerName: getOfficerName(), timestamp: new Date() }
+  );
+ }
  } catch (err: any) { alert(err.message); }
  finally { setLoading(false); }
  };
@@ -266,10 +298,23 @@ function AdminDashboardContent() {
  try {
  const amt = singleType === "add" ? parseFloat(singleAmount) : -parseFloat(singleAmount);
  const { data: current } = await supabase.from("students").select("balance").eq("id", singleSelected.id).single();
- await supabase.from("students").update({ balance: (current?.balance || 0) + amt }).eq("id", singleSelected.id);
+ const newBalance = (current?.balance || 0) + amt;
+ await supabase.from("students").update({ balance: newBalance }).eq("id", singleSelected.id);
  await supabase.from("fund_transactions").insert([{ student_id: singleSelected.id, amount: amt, type: singleType === "add" ? "deposit" : "withdrawal", description: singlePurpose || "Manual adjustment" }]);
+ const studentObj: StudentObj = {
+  name: singleSelected.full_name,
+  id: singleSelected.roll_id,
+  grade: singleSelected.grade,
+  newBalance,
+ };
+ triggerFundAnimation(
+  singleType === "add" ? "add" : "remove",
+  Math.abs(amt),
+  singlePurpose || "Manual Wallet Adjustment",
+  studentObj,
+  { officerName: getOfficerName(), timestamp: new Date() }
+ );
  setSingleSelected(null); setSingleAmount(""); setSingleSearch(""); setSinglePurpose(""); await refreshData();
- alert(`✅ ₹${Math.abs(amt)} ${singleType === "add" ? "Added to" : "Deducted from"} Student Account`);
  } catch (err: any) { alert(err.message); }
  finally { setLoading(false); }
  };
@@ -302,15 +347,27 @@ function AdminDashboardContent() {
  setLoading(true);
  try {
  const amt = parseFloat(selectiveAmount);
- await Promise.all(selectedStudents.map(async (studentId) => {
+ const results = await Promise.all(selectedStudents.map(async (studentId) => {
  const { data: fresh } = await supabase.from("students").select("balance").eq("id", studentId).single();
  const currentBalance = fresh?.balance ?? 0;
- await supabase.from("students").update({ balance: currentBalance + amt }).eq("id", studentId);
+ const newBalance = currentBalance + amt;
+ await supabase.from("students").update({ balance: newBalance }).eq("id", studentId);
  await supabase.from("fund_transactions").insert([{ student_id: studentId, amount: amt, type: "distribution", description: selectivePurpose || "Selective Bulk Add" }]);
+ return { studentId, newBalance };
  }));
  setSelectiveAmount(""); setSelectivePurpose("");
  await refreshData();
- alert(`✅ ₹${amt} added to ${selectedStudents.length} selected students`);
+ const lastId = selectedStudents[selectedStudents.length - 1];
+ const last = students.find(s => s.id === lastId);
+ const lastResult = results[results.length - 1];
+ if (last && lastResult) {
+  triggerFundAnimation(
+   "add", amt,
+   (selectivePurpose || "Selective Bulk Credit") + `  (${selectedStudents.length} students)`,
+   { name: last.full_name, id: last.roll_id, grade: last.grade, newBalance: lastResult.newBalance },
+   { officerName: getOfficerName(), timestamp: new Date() }
+  );
+ }
  } catch (err: any) { alert(err.message); }
  finally { setLoading(false); }
  };
@@ -390,15 +447,27 @@ function AdminDashboardContent() {
  setLoading(true);
  try {
  const amt = parseFloat(bulkCreditAmount);
- await Promise.all(selectedStudentsForCredit.map(async (studentId) => {
+ const results = await Promise.all(selectedStudentsForCredit.map(async (studentId) => {
  const { data: fresh } = await supabase.from("students").select("balance").eq("id", studentId).single();
  const currentBalance = fresh?.balance ?? 0;
- await supabase.from("students").update({ balance: currentBalance + amt }).eq("id", studentId);
+ const newBalance = currentBalance + amt;
+ await supabase.from("students").update({ balance: newBalance }).eq("id", studentId);
  await supabase.from("fund_transactions").insert([{ student_id: studentId, amount: amt, type: "distribution", description: bulkCreditPurpose || "Bulk Student Credit" }]);
+ return { studentId, newBalance };
  }));
  setBulkCreditAmount(""); setBulkCreditPurpose(""); setBulkCreditSearch("");
  await refreshData();
- alert(`✅ ₹${amt} credited to ${selectedStudentsForCredit.length} students`);
+ const lastId = selectedStudentsForCredit[selectedStudentsForCredit.length - 1];
+ const last = students.find(s => s.id === lastId);
+ const lastResult = results[results.length - 1];
+ if (last && lastResult) {
+  triggerFundAnimation(
+   "add", amt,
+   (bulkCreditPurpose || "Bulk Student Credit") + `  (${selectedStudentsForCredit.length} students)`,
+   { name: last.full_name, id: last.roll_id, grade: last.grade, newBalance: lastResult.newBalance },
+   { officerName: getOfficerName(), timestamp: new Date() }
+  );
+ }
  } catch (err: any) { alert(err.message); }
  finally { setLoading(false); }
  };
@@ -560,6 +629,102 @@ function AdminDashboardContent() {
  const handleDownloadStudents = () => {
  const exportData = students.map(s => ({ Name: s.full_name, RollID: s.roll_id, Balance: `₹${s.balance.toLocaleString()}`, Date: (s as any).created_at ? new Date((s as any).created_at).toLocaleDateString() : "" }));
  downloadPDF("Student Personnel List", exportData, `students_all_${new Date().toISOString().split("T")[0]}.pdf`);
+ };
+
+ const buildStudentJSONPayload = (s: Student) => {
+  const phone = s.phone ?? s.phone_number ?? s.parent_phone ?? s.guardian_contact ?? s.emergency_contact ?? null;
+  return {
+    id: s.id,
+    uuid: s.id,
+    roll_id: s.roll_id,
+    username: s.username || null,
+    full_name: s.full_name,
+    first_name: s.full_name?.split(" ")[0] || s.full_name,
+    last_name: s.full_name?.split(" ").slice(1).join(" ") || null,
+    grade: s.grade || null,
+    class: s.grade || null,
+    section: s.section || null,
+    gender: s.gender || null,
+    dob: s.dob || null,
+    date_of_birth: s.dob || null,
+    email: s.email_account || null,
+    email_account: s.email_account || null,
+    email_library: s.email_library || null,
+    password: s.password || null,
+    plain_password: s.password || null,
+    default_password: s.password || "default123",
+    phone: phone,
+    phone_number: phone,
+    mobile: phone,
+    contact: phone,
+    parent_phone: s.parent_phone || phone,
+    guardian_name: s.guardian_name || null,
+    guardian_contact: s.guardian_contact || phone,
+    emergency_contact: s.emergency_contact || phone,
+    address: s.address || null,
+    balance: typeof s.balance === "number" ? s.balance : Number(s.balance ?? 0),
+    wallet_balance: typeof s.balance === "number" ? s.balance : Number(s.balance ?? 0),
+    rating: s.rating ?? null,
+    is_responsible: !!s.is_responsible,
+    is_active: true,
+    last_password_change: s.last_password_change || null,
+    created_at: s.created_at || null,
+    enrollment_date: s.created_at || null,
+    generated_at: new Date().toISOString(),
+    export_source: "dars-fund-system/admin-panel",
+  };
+ };
+
+ const handleDownloadStudentsJSON = () => {
+  if (students.length === 0) { alert("No students to export."); return; }
+  const payload = {
+    $schema: "https://schemas.darsfund.school/v1/students-export.schema.json",
+    meta: {
+      total_students: students.length,
+      exported_at: new Date().toISOString(),
+      exported_by: getOfficerName(),
+      system: "dars-fund-system",
+      module: "admin-students",
+    },
+    data: students.map(buildStudentJSONPayload),
+  };
+  const fname = `students_full_export_${new Date().toISOString().replace(/[:.]/g,"-").split("T")[0]}_T${new Date().toISOString().slice(11,19)}.json`;
+  downloadJSON(payload, fname);
+ };
+
+ const handleCopyStudentsJSON = async () => {
+  if (students.length === 0) { alert("No students to copy."); return; }
+  const payload = {
+    meta: { total: students.length, exported_at: new Date().toISOString(), exported_by: getOfficerName() },
+    data: students.map(buildStudentJSONPayload),
+  };
+  const ok = await copyJSONToClipboard(payload);
+  if (ok) {
+    setStudentsJsonCopied(true);
+    setTimeout(() => setStudentsJsonCopied(false), 2200);
+  } else {
+    alert("Failed to copy JSON to clipboard.");
+  }
+ };
+
+ const handleDownloadSingleStudentJSON = (s: Student) => {
+  const payload = {
+    meta: { exported_at: new Date().toISOString(), exported_by: getOfficerName() },
+    data: buildStudentJSONPayload(s),
+  };
+  const slug = (s.roll_id || s.id || "student").toLowerCase().replace(/[^a-z0-9]+/g,"_");
+  downloadJSON(payload, `student_${slug}_${new Date().toISOString().slice(0,10)}.json`);
+ };
+
+ const handleCopySingleStudentJSON = async (s: Student) => {
+  const payload = { data: buildStudentJSONPayload(s) };
+  const ok = await copyJSONToClipboard(payload);
+  if (ok) {
+    setStudentJsonCopiedId(s.id);
+    setTimeout(() => setStudentJsonCopiedId(null), 2200);
+  } else {
+    alert("Failed to copy JSON to clipboard.");
+  }
  };
 
  const handleDownloadStudentLedger = (student: Student) => {
@@ -1244,9 +1409,23 @@ function AdminDashboardContent() {
  </div>
 
  {/* Action Toolbar */}
- <div className="flex flex-col sm:flex-row gap-3 mt-5 pt-5 border-t border-[#E8E5FF]">
+ <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-5 pt-5 border-t border-[#E8E5FF]">
  <button onClick={handleDownloadStudents} className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F0F2F9] border border-[#E8E5FF] rounded-xl text-sm font-semibold text-slate-700 hover:bg-[#E8E5FF] hover:text-[#5A45FF] transition-all">
  <Download className="w-4 h-4" /> Download All Personnel (PDF)
+ </button>
+ <button
+  onClick={handleCopyStudentsJSON}
+  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+   studentsJsonCopied
+    ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+  }`}
+ >
+ {studentsJsonCopied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+ {studentsJsonCopied ? "Students JSON Copied!" : "Copy All as JSON"}
+ </button>
+ <button onClick={handleDownloadStudentsJSON} className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#111827] text-white rounded-xl text-sm font-semibold hover:bg-slate-800 shadow-sm hover:shadow transition-all">
+ <FileJson className="w-4 h-4" /> Download Full JSON
  </button>
  <button onClick={() => { setEditingUser(null); setShowUserModal(true); }} className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#5A45FF] to-[#6C5CE7] text-white rounded-xl text-sm font-semibold shadow-[0_4px_12px_rgba(90,69,255,0.3)] hover:shadow-[0_4px_20px_rgba(90,69,255,0.5)] hover:-translate-y-0.5 transition-all">
  <UserPlus className="w-4 h-4" /> Enroll New Personnel

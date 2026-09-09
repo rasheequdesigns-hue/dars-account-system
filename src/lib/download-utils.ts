@@ -98,3 +98,50 @@ export const downloadPDF = (title: string, data: any[], filename: string) => {
     alert("Please allow popups to download PDF");
   }
 };
+
+/**
+ * Download any JSON-serializable data as a .json file.
+ */
+export const downloadJSON = <T = unknown>(data: T, filename: string) => {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+  const link = document.createElement("a");
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+};
+
+/**
+ * Copy JSON-serializable data to clipboard as formatted JSON.
+ * Returns a Promise<boolean> indicating success.
+ */
+export const copyJSONToClipboard = async <T = unknown>(data: T): Promise<boolean> => {
+  const json = JSON.stringify(data, null, 2);
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(json);
+      return true;
+    }
+    const ta = document.createElement("textarea");
+    ta.value = json;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "-9999px";
+    ta.setAttribute("readonly", "");
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, json.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+};
